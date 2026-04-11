@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FUXA WH Simulator — Wellhead Control Panel</title>
+<style>
+  :root {
+    --bg: #1e1e1e;
+    --panel: #2b2b2b;
+    --panel2: #333;
+    --border: #444;
+    --accent: #00b050;
+    --accent2: #4db8ff;
+    --warn: #ffd04a;
+    --danger: #c00000;
+    --text: #e0e0e0;
+    --text-dim: #888;
+    --text-label: #aaa;
+    --header: #1a1a1a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
+    font-size: 13px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: var(--header);
+    border-bottom: 2px solid #00b050;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .header-logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .header-logo .brand {
+    font-size: 20px; font-weight: 700; color: #00b050; letter-spacing: 2px;
+  }
+  .header-logo .sub {
+    font-size: 11px; color: var(--text-dim); letter-spacing: 1px;
+  }
+  .header-status {
+    display: flex; gap: 20px; align-items: center;
+  }
+  .status-badge {
+    display: flex; align-items: center; gap: 5px; font-size: 11px;
+  }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  .status-dot.green { background: #00b050; }
+  .status-dot.yellow { background: #ffd04a; }
+  .status-dot.red { background: #c00000; }
+  @keyframes pulse {
+    0%,100%{opacity:1} 50%{opacity:0.4}
+  }
+  .clock { font-size: 13px; color: var(--accent2); font-family: monospace; }
+
+  /* ── Tabs ── */
+  .tabs {
+    background: #222;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 2px;
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+  .tab {
+    padding: 8px 18px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); background: #2b2b2b; }
+  .tab.active { border-bottom-color: var(--accent2); color: var(--accent2); }
+
+  /* ── Content area ── */
+  .content {
+    flex: 1;
+    overflow: auto;
+    padding: 12px;
+  }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ── Overview layout ── */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .overview-top {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  /* ── Cards / Panels ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px;
+  }
+  .card-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .card-title span { font-size: 10px; color: var(--text-dim); }
+
+  /* ── Big stat ── */
+  .big-stat {
+    text-align: center;
+  }
+  .big-stat .value {
+    font-size: 36px;
+    font-weight: 700;
+    font-family: monospace;
+    color: var(--accent2);
+    line-height: 1;
+  }
+  .big-stat .unit {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .big-stat .label {
+    font-size: 11px;
+    color: var(--text-label);
+    margin-top: 4px;
+  }
+
+  /* ── Vertical progress bar ── */
+  .bar-container {
+    display: flex;
+    gap: 6px;
+    align-items: flex-end;
+    height: 120px;
+    padding: 0 4px;
+  }
+  .bar-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    height: 100%;
+    gap: 2px;
+  }
+  .bar-track {
+    flex: 1;
+    width: 100%;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+    min-height: 80px;
+  }
+  .bar-fill {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
+    transition: height 1s ease;
+  }
+  .bar-fill.warn { background: var(--warn); }
+  .bar-fill.danger { background: var(--danger); }
+  .bar-val {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-align: center;
+    font-family: monospace;
+  }
+  .bar-label {
+    font-size: 8px;
+    color: var(--text-dim);
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  /* ── Wellhead table ── */
+  .wh-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .wh-table th {
+    background: #1a1a1a;
+    color: var(--text-dim);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 6px 8px;
+    text-align: right;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .wh-table th:first-child { text-align: left; }
+  .wh-table td {
+    border: 1px solid #3a3a3a;
+    padding: 5px 8px;
+    text-align: right;
+    font-family: monospace;
+    font-size: 12px;
+  }
+  .wh-table td:first-child { text-align: left; color: var(--text-label); font-size: 11px; }
+  .wh-table tr:hover td { background: rgba(255,255,255,0.03); }
+  .wh-table tr:nth-child(even) td { background: rgba(0,0,0,0.15); }
+
+  /* ── Choke gauge ── */
+  .choke-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  .choke-card {
+    background: #222;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px;
+    text-align: center;
+  }
+  .choke-card .wh-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  /* SVG gauge */
+  .gauge-svg { width: 80px; height: 60px; display: block; margin: 0 auto; }
+  .choke-pct {
+    font-size: 16px;
+    font-weight: 700;
+    font-family: monospace;
+    margin-top: 2px;
+  }
+  .choke-mode {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-top: 3px;
+  }
+  .mode-auto { background: #004d20; color: #00b050; }
+  .mode-man  { background: #4d3800; color: #ffd04a; }
+
+  /* ── Compressor panel ── */
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .comp-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 12px;
+  }
+  .comp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .comp-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+  .comp-status {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-weight: 600;
+  }
+  .comp-status.running { background: #004d20; color: #00b050; }
+  .comp-status.standby { background: #1a3a4d; color: #4db8ff; }
+  .comp-status.fault   { background: #4d0000; color: #ff4444; }
+  .comp-status.stopped { background: #333; color: #888; }
+
+  .comp-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .comp-stat {
+    background: #1a1a1a;
+    border: 1px solid #3a3a3a;
+    border-radius: 2px;
+    padding: 6px;
+    text-align: center;
+  }
+  .comp-stat .val {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: monospace;
+    color: var(--text);
+  }
+  .comp-stat .lbl {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  .flow-bar {
+    height: 12px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  .flow-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00b050, #4db8ff);
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+  .flow-bar-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── Wellhead detail ── */
+  .wh-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  .wh-detail-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 8px;
+  }
+  .wh-detail-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent2);
+    text-align: center;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--border);
+  }
+  .wh-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    border-bottom: 1px solid #333;
+  }
+  .wh-stat-row:last-child { border-bottom: none; }
+  .wh-stat-lbl { font-size: 9px; color: var(--text-dim); }
+  .wh-stat-val { font-size: 12px; font-family: monospace; font-weight: 600; }
+
+  /* ── Mini arc gauge ── */
+  .arc-gauge { display: block; margin: 4px auto; }
+
+  /* ── Analytics charts ── */
+  .chart-container {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+  .chart-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  canvas { width: 100% !important; }
+
+  /* ── Scrollbar styling ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #1a1a1a; }
+  ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+  /* value colors */
+  .val-green { color: #00b050; }
+  .val-yellow { color: #ffd04a; }
+  .val-red { color: #ff4444; }
+  .val-blue { color: #4db8ff; }
+  .val-white { color: #e0e0e0; }
+
+  .section-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin: 10px 0 6px 0;
+  }
+
+  .row { display: flex; gap: 10px; margin-bottom: 10px; }
+  .row > * { flex: 1; }
+
+  /* Sparkline */
+  .sparkline { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo">
+    <svg width="32" height="32" viewBox="0 0 32 32">
+      <rect width="32" height="32" rx="3" fill="#004d20"/>
+      <text x="16" y="22" text-anchor="middle" font-size="14" font-weight="700" fill="#00b050" font-family="Arial">WH</text>
+    </svg>
+    <div>
+      <div class="brand">FUXA — WH PANEL</div>
+      <div class="sub">WELLHEAD INJECTION CONTROL SYSTEM</div>
+    </div>
+  </div>
+  <div class="header-status">
+    <div class="status-badge">
+      <div class="status-dot green" id="comm-dot"></div>
+      <span>PLC COMM</span>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot green" id="de-dot"></div>
+      <span>DE LINK</span>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot green" id="comp-dot"></div>
+      <span id="comp-count">4 COMP RUNNING</span>
+    </div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-view="overview">Overview</div>
+  <div class="tab" data-view="wellheads">Wellhead Data</div>
+  <div class="tab" data-view="chokes">Choke Positions</div>
+  <div class="tab" data-view="compressors">Compressors</div>
+  <div class="tab" data-view="analytics">Analytics</div>
+  <div class="tab" data-view="settings">QSG / Settings</div>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- ===== OVERVIEW ===== -->
+  <div class="view active" id="view-overview">
+
+    <!-- Top KPIs -->
+    <div class="overview-top">
+      <div class="card">
+        <div class="card-title">Total Injection Flow</div>
+        <div class="big-stat">
+          <div class="value val-blue" id="kpi-total-flow">0.000</div>
+          <div class="unit">MMSCFD</div>
+          <div class="label">All 10 Wellheads</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Compressor Output</div>
+        <div class="big-stat">
+          <div class="value val-green" id="kpi-comp-flow">0.000</div>
+          <div class="unit">MMSCFD</div>
+          <div class="label">Combined Capacity</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Avg Injection Pressure</div>
+        <div class="big-stat">
+          <div class="value val-yellow" id="kpi-avg-prs">0</div>
+          <div class="unit">PSI</div>
+          <div class="label">Wellheads 1–10</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">System Utilization</div>
+        <div class="big-stat">
+          <div class="value val-green" id="kpi-util">0</div>
+          <div class="unit">%</div>
+          <div class="label">Flow / Capacity</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flow bars for all wellheads + right panel -->
+    <div class="overview-grid">
+      <div class="card">
+        <div class="card-title">Wellhead Injection Flow <span>MMSCFD</span></div>
+        <div class="bar-container" id="flow-bars"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Choke Positions <span>%</span></div>
+        <div class="bar-container" id="choke-bars"></div>
+      </div>
+    </div>
+
+    <!-- Compressor summary -->
+    <div class="card">
+      <div class="card-title">Compressor Status</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;" id="comp-summary"></div>
+    </div>
+
+  </div>
+
+  <!-- ===== WELLHEAD DATA ===== -->
+  <div class="view" id="view-wellheads">
+    <div class="row">
+      <div class="card" style="flex:none;width:100%;">
+        <div class="card-title">Wellhead Injection Data — All 10 Wellheads</div>
+        <table class="wh-table" id="wh-table">
+          <thead>
+            <tr>
+              <th>Wellhead</th>
+              <th>Flow (MMSCFD)</th>
+              <th>Static Prs (PSI)</th>
+              <th>Diff Prs (PSI)</th>
+              <th>Temp (°F)</th>
+              <th>Setpoint (MMSCFD)</th>
+              <th>Yest. Flow (MMSCFD)</th>
+              <th>Mode</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="wh-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="section-title">Per-Wellhead Detail</div>
+    <div class="wh-detail-grid" id="wh-detail-grid"></div>
+  </div>
+
+  <!-- ===== CHOKE POSITIONS ===== -->
+  <div class="view" id="view-chokes">
+    <div class="row">
+      <div class="card" style="flex:none;width:100%;">
+        <div class="card-title">Choke Position Control — All 10 Wellheads</div>
+        <div class="choke-grid" id="choke-cards"></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div class="card">
+        <div class="card-title">Flow Priority Ranking</div>
+        <table class="wh-table" id="priority-table">
+          <thead>
+            <tr>
+              <th>Wellhead</th>
+              <th>Flow Priority</th>
+              <th>Oil Priority</th>
+              <th>Man/Auto</th>
+              <th>Calc. Desired Flow</th>
+              <th>Max Flow</th>
+            </tr>
+          </thead>
+          <tbody id="priority-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== COMPRESSORS ===== -->
+  <div class="view" id="view-compressors">
+    <div class="section-title">Compressor Units</div>
+    <div class="comp-grid" id="comp-grid"></div>
+    <div class="section-title" style="margin-top:10px;">Flow Setpoints</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;" id="comp-setpoints"></div>
+  </div>
+
+  <!-- ===== ANALYTICS ===== -->
+  <div class="view" id="view-analytics">
+    <div class="row">
+      <div class="chart-container">
+        <div class="chart-title">Total Injection Flow — Live Trend (MMSCFD)</div>
+        <canvas id="chart-total-flow" height="120"></canvas>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="chart-container">
+        <div class="chart-title">Per-Wellhead Flow Distribution</div>
+        <canvas id="chart-wh-flow" height="160"></canvas>
+      </div>
+      <div class="chart-container">
+        <div class="chart-title">Pressure Trend — Wellheads 1–4 (PSI)</div>
+        <canvas id="chart-pressure" height="160"></canvas>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+      <div class="chart-container">
+        <div class="chart-title">Compressor Flow Output (MMSCFD)</div>
+        <canvas id="chart-comp-flow" height="140"></canvas>
+      </div>
+      <div class="chart-container">
+        <div class="chart-title">Choke Position Average vs. Flow</div>
+        <canvas id="chart-choke" height="140"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS / QSG ===== -->
+  <div class="view" id="view-settings">
+    <div class="row">
+      <div class="card">
+        <div class="card-title">Quick Start Guide (QSG) — System Configuration</div>
+        <table class="wh-table" style="margin-top:4px;">
+          <thead>
+            <tr><th>Parameter</th><th>Value</th><th>Description</th></tr>
+          </thead>
+          <tbody id="qsg-tbody"></tbody>
+        </table>
+      </div>
+      <div class="card" style="max-width:320px;">
+        <div class="card-title">System Info</div>
+        <div id="sys-info" style="font-size:11px;line-height:2;"></div>
+      </div>
+    </div>
+    <div class="section-title">Device Connections</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;" id="device-cards"></div>
+  </div>
+
+</div><!-- /content -->
+
+<script>
+// ─────────────────────────────────────────────
+// FUXA WH Simulator — Data Engine
+// ─────────────────────────────────────────────
+
+// Realistic ranges parsed from FUXA_WH__02272026_Final.json
+const N_WH = 10;
+const N_COMP = 4;
+
+// State
+const state = {
+  wh: Array.from({length: N_WH}, (_, i) => ({
+    id: i + 1,
+    flow: rand(0.08, 0.45),          // MMSCFD
+    staticPrs: rand(1200, 2800),     // PSI
+    diffPrs: rand(15, 120),          // PSI
+    temp: rand(65, 135),             // °F
+    setpoint: rand(0.15, 0.40),      // MMSCFD
+    yesterdayFlow: rand(0.10, 0.42), // MMSCFD
+    chokePos: rand(25, 85),          // %
+    manAuto: Math.random() > 0.2 ? 1 : 0, // 1=auto, 0=manual
+    flowPriority: i + 1,
+    oilPriority: Math.floor(Math.random() * 10) + 1,
+    maxFlow: rand(0.40, 0.55),
+    calcDesiredFlow: rand(0.12, 0.42),
+  })),
+  comp: Array.from({length: N_COMP}, (_, i) => ({
+    id: i + 1,
+    name: `Compressor #${i+1}`,
+    status: i < 3 ? 'running' : (Math.random() > 0.5 ? 'standby' : 'running'),
+    flow: rand(0.3, 0.85),           // MMSCFD
+    flowSP: rand(0.4, 0.9),          // MMSCFD setpoint
+    maxFlow: 1.0,
+    panelStatus: 1,
+    rpm: rand(900, 1200),
+    discharge: rand(2200, 3200),     // PSI
+    suction: rand(400, 800),         // PSI
+    temp: rand(145, 195),            // °F discharge temp
+  })),
+  numWHchokes: 10,
+  numCompressors: 4,
+  stabilizationTime: 120,
+  staggeringDelay: 30,
+  overrideDE: 0,
+  priorityMode: 0,
+};
+
+function rand(min, max) {
+  return min + Math.random() * (max - min);
+}
+function jitter(val, pct) {
+  return val * (1 + (Math.random() - 0.5) * 2 * pct);
+}
+
+// ── Chart history ──
+const HIST = 60;
+const history = {
+  totalFlow: Array.from({length: HIST}, () => rand(1.2, 2.1)),
+  compFlow:  Array.from({length: HIST}, () => rand(1.5, 2.5)),
+  pressure:  Array.from({length: 4}, (_, i) => Array.from({length: HIST}, () => rand(1400, 2600))),
+  choke:     Array.from({length: HIST}, () => rand(40, 70)),
+};
+
+// ── Update simulation ──
+function updateState() {
+  state.wh.forEach(wh => {
+    wh.flow       = Math.max(0, jitter(wh.flow, 0.04));
+    wh.staticPrs  = Math.max(800, jitter(wh.staticPrs, 0.02));
+    wh.diffPrs    = Math.max(5,   jitter(wh.diffPrs, 0.06));
+    wh.temp       = Math.max(50,  jitter(wh.temp, 0.01));
+    wh.chokePos   = Math.min(100, Math.max(0, jitter(wh.chokePos, 0.03)));
+    wh.setpoint   = jitter(wh.setpoint, 0.005);
+    wh.calcDesiredFlow = jitter(wh.calcDesiredFlow, 0.02);
+  });
+  state.comp.forEach(comp => {
+    if (comp.status === 'running') {
+      comp.flow     = Math.max(0, jitter(comp.flow, 0.03));
+      comp.rpm      = Math.max(700, jitter(comp.rpm, 0.01));
+      comp.discharge= Math.max(1800, jitter(comp.discharge, 0.015));
+      comp.suction  = Math.max(300, jitter(comp.suction, 0.02));
+      comp.temp     = Math.max(120, jitter(comp.temp, 0.01));
+    }
+  });
+  // Update history
+  const tf = state.wh.reduce((s,w) => s + w.flow, 0);
+  const cf = state.comp.filter(c=>c.status==='running').reduce((s,c)=>s+c.flow,0);
+  history.totalFlow.push(tf); history.totalFlow.shift();
+  history.compFlow.push(cf);  history.compFlow.shift();
+  state.wh.slice(0,4).forEach((wh, i) => {
+    history.pressure[i].push(wh.staticPrs);
+    history.pressure[i].shift();
+  });
+  const avgChoke = state.wh.reduce((s,w)=>s+w.chokePos,0)/N_WH;
+  history.choke.push(avgChoke); history.choke.shift();
+}
+
+// ── Helpers ──
+function fmt(v, d=2) { return v.toFixed(d); }
+function fmtPsi(v)   { return Math.round(v).toString(); }
+function colorFlow(v, sp) {
+  const ratio = v / sp;
+  if (ratio > 0.9) return 'val-green';
+  if (ratio > 0.5) return 'val-yellow';
+  return 'val-red';
+}
+
+// ── Build static DOM once ──
+function buildDOM() {
+  // Flow bars
+  const fb = document.getElementById('flow-bars');
+  const cb = document.getElementById('choke-bars');
+  fb.innerHTML = ''; cb.innerHTML = '';
+  state.wh.forEach(wh => {
+    fb.innerHTML += `<div class="bar-wrap">
+      <div class="bar-track"><div class="bar-fill" id="fb-${wh.id}" style="height:50%"></div></div>
+      <div class="bar-val" id="fbv-${wh.id}">-</div>
+      <div class="bar-label">WH${wh.id}</div>
+    </div>`;
+    cb.innerHTML += `<div class="bar-wrap">
+      <div class="bar-track"><div class="bar-fill" id="cb-${wh.id}" style="height:50%"></div></div>
+      <div class="bar-val" id="cbv-${wh.id}">-</div>
+      <div class="bar-label">WH${wh.id}</div>
+    </div>`;
+  });
+
+  // Comp summary
+  const cs = document.getElementById('comp-summary');
+  cs.innerHTML = state.comp.map(c => `
+    <div class="comp-stat" id="comp-sum-${c.id}">
+      <div class="val" id="cs-flow-${c.id}">-</div>
+      <div class="lbl">${c.name} <span id="cs-st-${c.id}" class="comp-status">--</span></div>
+    </div>`).join('');
+
+  // WH table
+  const tb = document.getElementById('wh-tbody');
+  tb.innerHTML = state.wh.map(wh => `
+    <tr>
+      <td>Wellhead #${wh.id}</td>
+      <td id="wt-flow-${wh.id}">-</td>
+      <td id="wt-sprs-${wh.id}">-</td>
+      <td id="wt-dprs-${wh.id}">-</td>
+      <td id="wt-temp-${wh.id}">-</td>
+      <td id="wt-sp-${wh.id}">-</td>
+      <td id="wt-yf-${wh.id}">-</td>
+      <td id="wt-mode-${wh.id}">-</td>
+      <td id="wt-stat-${wh.id}">-</td>
+    </tr>`).join('');
+
+  // WH detail cards
+  const dg = document.getElementById('wh-detail-grid');
+  dg.innerHTML = state.wh.map(wh => `
+    <div class="wh-detail-card">
+      <div class="wh-detail-title">WH #${wh.id}</div>
+      <svg class="arc-gauge" width="80" height="48" viewBox="0 0 80 48" id="arc-${wh.id}"></svg>
+      <div class="wh-stat-row"><span class="wh-stat-lbl">Flow</span><span class="wh-stat-val" id="wd-flow-${wh.id}">-</span></div>
+      <div class="wh-stat-row"><span class="wh-stat-lbl">Stat Prs</span><span class="wh-stat-val" id="wd-sprs-${wh.id}">-</span></div>
+      <div class="wh-stat-row"><span class="wh-stat-lbl">Diff Prs</span><span class="wh-stat-val" id="wd-dprs-${wh.id}">-</span></div>
+      <div class="wh-stat-row"><span class="wh-stat-lbl">Temp</span><span class="wh-stat-val" id="wd-temp-${wh.id}">-</span></div>
+      <div class="wh-stat-row"><span class="wh-stat-lbl">Choke</span><span class="wh-stat-val" id="wd-choke-${wh.id}">-</span></div>
+    </div>`).join('');
+
+  // Choke cards
+  const cc = document.getElementById('choke-cards');
+  cc.innerHTML = state.wh.map(wh => `
+    <div class="choke-card">
+      <div class="wh-label">Wellhead #${wh.id}</div>
+      <svg class="gauge-svg" viewBox="0 0 80 50" id="choke-svg-${wh.id}"></svg>
+      <div class="choke-pct" id="choke-pct-${wh.id}">-</div>
+      <div class="choke-mode" id="choke-mode-${wh.id}">-</div>
+    </div>`).join('');
+
+  // Priority table
+  const pt = document.getElementById('priority-tbody');
+  pt.innerHTML = state.wh.map(wh => `
+    <tr>
+      <td>Wellhead #${wh.id}</td>
+      <td id="pt-fp-${wh.id}">${wh.flowPriority}</td>
+      <td id="pt-op-${wh.id}">${wh.oilPriority}</td>
+      <td id="pt-ma-${wh.id}">-</td>
+      <td id="pt-cf-${wh.id}">-</td>
+      <td>${fmt(wh.maxFlow, 3)}</td>
+    </tr>`).join('');
+
+  // Compressor grid
+  const cg = document.getElementById('comp-grid');
+  cg.innerHTML = state.comp.map(c => `
+    <div class="comp-card">
+      <div class="comp-header">
+        <div class="comp-name">${c.name}</div>
+        <div class="comp-status ${c.status}" id="comp-st-${c.id}">${c.status.toUpperCase()}</div>
+      </div>
+      <div class="comp-stats">
+        <div class="comp-stat">
+          <div class="val val-blue" id="cg-flow-${c.id}">-</div>
+          <div class="lbl">Flow MMSCFD</div>
+        </div>
+        <div class="comp-stat">
+          <div class="val" id="cg-rpm-${c.id}">-</div>
+          <div class="lbl">RPM</div>
+        </div>
+        <div class="comp-stat">
+          <div class="val val-yellow" id="cg-disc-${c.id}">-</div>
+          <div class="lbl">Disc PSI</div>
+        </div>
+        <div class="comp-stat">
+          <div class="val" id="cg-suct-${c.id}">-</div>
+          <div class="lbl">Suct PSI</div>
+        </div>
+        <div class="comp-stat">
+          <div class="val val-yellow" id="cg-temp-${c.id}">-</div>
+          <div class="lbl">Disc °F</div>
+        </div>
+        <div class="comp-stat">
+          <div class="val val-green" id="cg-util-${c.id}">-</div>
+          <div class="lbl">Util %</div>
+        </div>
+      </div>
+      <div class="flow-bar"><div class="flow-bar-fill" id="cg-bar-${c.id}" style="width:0%"></div></div>
+      <div class="flow-bar-label"><span>0</span><span id="cg-barlbl-${c.id}">-</span><span>1.0 MMSCFD</span></div>
+    </div>`).join('');
+
+  // Compressor setpoints
+  const csp = document.getElementById('comp-setpoints');
+  csp.innerHTML = state.comp.map(c => `
+    <div class="card">
+      <div class="card-title">${c.name} — Flow SP</div>
+      <div class="big-stat">
+        <div class="value val-blue" id="csp-${c.id}">-</div>
+        <div class="unit">MMSCFD</div>
+      </div>
+    </div>`).join('');
+
+  // QSG table
+  const qsg = document.getElementById('qsg-tbody');
+  const qsgParams = [
+    ['numWHchokes',      state.numWHchokes,        'Number of active wellhead chokes'],
+    ['numCompressors',   state.numCompressors,      'Number of compressor units online'],
+    ['stabilizationTime',state.stabilizationTime + ' s', 'Choke stabilization time after adjustment'],
+    ['staggeringDelay',  state.staggeringDelay + ' s',  'Staggering delay between choke moves'],
+    ['overrideDE',       state.overrideDE ? 'YES' : 'NO', 'Override distributed engine control'],
+    ['priorityMode',     state.priorityMode === 0 ? 'FLOW' : 'OIL', 'Optimization priority mode'],
+  ];
+  qsg.innerHTML = qsgParams.map(([p,v,d]) => `
+    <tr><td>${p}</td><td style="color:var(--accent2)">${v}</td><td style="color:var(--text-dim)">${d}</td></tr>
+  `).join('');
+
+  // System info
+  document.getElementById('sys-info').innerHTML = `
+    <div><span style="color:var(--text-dim)">Project Name:</span> <span>FUXA_WH__02272026</span></div>
+    <div><span style="color:var(--text-dim)">FUXA Version:</span> <span>1.x</span></div>
+    <div><span style="color:var(--text-dim)">PLC Device:</span> <span>ModbusTCP @ PLC_tcp</span></div>
+    <div><span style="color:var(--text-dim)">DE Device:</span> <span>ModbusTCP @ modbusTOde</span></div>
+    <div><span style="color:var(--text-dim)">Comp Links:</span> <span>comp1–comp4 (Modbus)</span></div>
+    <div><span style="color:var(--text-dim)">Views:</span> <span>20 views loaded</span></div>
+    <div><span style="color:var(--text-dim)">Tags (PLC):</span> <span>55 tags</span></div>
+    <div><span style="color:var(--text-dim)">Tags (DE):</span> <span>79 tags</span></div>
+  `;
+
+  // Device cards
+  const devs = [
+    {name:'PLC_tcp',       type:'ModbusTCP', tags:55, status:'online'},
+    {name:'modbusTOde',    type:'ModbusTCP', tags:79, status:'online'},
+    {name:'comp1_mlink',   type:'ModbusTCP', tags:2,  status:'online'},
+    {name:'comp2_mlink',   type:'ModbusTCP', tags:2,  status:'online'},
+    {name:'comp3_mlink',   type:'ModbusTCP', tags:2,  status:'online'},
+    {name:'comp4_mlink',   type:'ModbusTCP', tags:2,  status:'online'},
+  ];
+  document.getElementById('device-cards').innerHTML = devs.map(d => `
+    <div class="card">
+      <div class="card-title">${d.name} <span class="${d.status==='online'?'val-green':'val-red'}">${d.status.toUpperCase()}</span></div>
+      <div style="font-size:11px;line-height:1.8;">
+        <div><span style="color:var(--text-dim)">Protocol:</span> ${d.type}</div>
+        <div><span style="color:var(--text-dim)">Tags:</span> ${d.tags}</div>
+        <div><span style="color:var(--text-dim)">Heartbeat:</span> <span class="val-green" id="hb-${d.name}">OK</span></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── Arc gauge SVG renderer ──
+function renderArcGauge(svgEl, pct, color) {
+  const r = 36, cx = 40, cy = 44, startDeg = 210, totalDeg = 240;
+  function polarToXY(deg, radius) {
+    const rad = (deg - 90) * Math.PI / 180;
+    return [cx + radius * Math.cos(rad), cy + radius * Math.sin(rad)];
+  }
+  function arcPath(deg) {
+    const [x1,y1] = polarToXY(startDeg, r);
+    const [x2,y2] = polarToXY(deg, r);
+    const large = deg - startDeg > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+  }
+  const endDeg = startDeg + totalDeg * Math.min(1, Math.max(0, pct / 100));
+  const bg = arcPath(startDeg + totalDeg);
+  const fg = pct > 0 ? arcPath(endDeg) : '';
+  svgEl.innerHTML = `
+    <path d="${bg}" fill="none" stroke="#333" stroke-width="6" stroke-linecap="round"/>
+    ${pct>0?`<path d="${fg}" fill="none" stroke="${color}" stroke-width="6" stroke-linecap="round"/>`:''}
+  `;
+}
+
+// ── Choke SVG renderer ──
+function renderChokeGauge(svgEl, pct, color) {
+  const r = 30, cx = 40, cy = 38, startDeg = 200, totalDeg = 220;
+  function polarToXY(deg, radius) {
+    const rad = (deg - 90) * Math.PI / 180;
+    return [cx + radius * Math.cos(rad), cy + radius * Math.sin(rad)];
+  }
+  function arcPath(fromDeg, toDeg) {
+    const [x1,y1] = polarToXY(fromDeg, r);
+    const [x2,y2] = polarToXY(toDeg, r);
+    const large = toDeg - fromDeg > 180 ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+  }
+  const endDeg = startDeg + totalDeg * Math.min(1, Math.max(0, pct / 100));
+  const bg = arcPath(startDeg, startDeg + totalDeg);
+  svgEl.innerHTML = `
+    <path d="${bg}" fill="none" stroke="#2a2a2a" stroke-width="7" stroke-linecap="round"/>
+    ${pct>0?`<path d="${arcPath(startDeg, endDeg)}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"/>`:''}
+    <text x="${cx}" y="${cy-8}" text-anchor="middle" font-size="9" fill="#888" font-family="monospace">CHOKE</text>
+  `;
+}
+
+// ── Bar color ──
+function barColor(pct) {
+  if (pct >= 75) return '';       // green (default)
+  if (pct >= 40) return 'warn';
+  return 'danger';
+}
+function chokeColor(pct) {
+  if (pct >= 70) return '#c00000';
+  if (pct >= 40) return '#ffd04a';
+  return '#00b050';
+}
+
+// ── Render DOM ──
+function render() {
+  const totalFlow = state.wh.reduce((s,w) => s + w.flow, 0);
+  const compFlow  = state.comp.filter(c=>c.status==='running').reduce((s,c)=>s+c.flow,0);
+  const avgPrs    = state.wh.reduce((s,w) => s + w.staticPrs, 0) / N_WH;
+  const util      = compFlow > 0 ? (totalFlow / compFlow * 100) : 0;
+
+  // KPIs
+  document.getElementById('kpi-total-flow').textContent = fmt(totalFlow, 3);
+  document.getElementById('kpi-comp-flow').textContent  = fmt(compFlow, 3);
+  document.getElementById('kpi-avg-prs').textContent    = fmtPsi(avgPrs);
+  document.getElementById('kpi-util').textContent       = fmt(Math.min(util, 100), 1);
+
+  // Comp running count
+  const runCount = state.comp.filter(c=>c.status==='running').length;
+  document.getElementById('comp-count').textContent = `${runCount} COMP RUNNING`;
+
+  // Flow bars
+  const maxFlow = Math.max(...state.wh.map(w=>w.flow), 0.5);
+  state.wh.forEach(wh => {
+    const pct = (wh.flow / maxFlow) * 100;
+    const el = document.getElementById(`fb-${wh.id}`);
+    if (el) { el.style.height = pct + '%'; el.className = 'bar-fill ' + barColor(pct); }
+    const vel = document.getElementById(`fbv-${wh.id}`);
+    if (vel) vel.textContent = fmt(wh.flow, 3);
+    // Choke bars
+    const cel = document.getElementById(`cb-${wh.id}`);
+    if (cel) { cel.style.height = wh.chokePos + '%'; cel.className = 'bar-fill ' + barColor(wh.chokePos); }
+    const cvl = document.getElementById(`cbv-${wh.id}`);
+    if (cvl) cvl.textContent = fmt(wh.chokePos, 0) + '%';
+  });
+
+  // Comp summary
+  state.comp.forEach(c => {
+    const flEl = document.getElementById(`cs-flow-${c.id}`);
+    if (flEl) flEl.textContent = c.status === 'running' ? fmt(c.flow, 3) : '—';
+    const stEl = document.getElementById(`cs-st-${c.id}`);
+    if (stEl) { stEl.textContent = c.status.toUpperCase(); stEl.className = 'comp-status ' + c.status; }
+  });
+
+  // WH table
+  state.wh.forEach(wh => {
+    const set = (id, val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
+    const cls = (id, cn) => { const e=document.getElementById(id); if(e) e.className=cn; };
+    set(`wt-flow-${wh.id}`, fmt(wh.flow, 4));
+    set(`wt-sprs-${wh.id}`, fmtPsi(wh.staticPrs));
+    set(`wt-dprs-${wh.id}`, fmt(wh.diffPrs, 1));
+    set(`wt-temp-${wh.id}`, fmt(wh.temp, 1));
+    set(`wt-sp-${wh.id}`,   fmt(wh.setpoint, 3));
+    set(`wt-yf-${wh.id}`,   fmt(wh.yesterdayFlow, 3));
+    set(`wt-mode-${wh.id}`, wh.manAuto ? 'AUTO' : 'MANUAL');
+    set(`wt-stat-${wh.id}`, wh.flow > 0.05 ? 'FLOWING' : 'IDLE');
+
+    // Detail cards
+    set(`wd-flow-${wh.id}`,  fmt(wh.flow, 4) + ' MMsc');
+    set(`wd-sprs-${wh.id}`,  fmtPsi(wh.staticPrs) + ' psi');
+    set(`wd-dprs-${wh.id}`,  fmt(wh.diffPrs, 1) + ' psi');
+    set(`wd-temp-${wh.id}`,  fmt(wh.temp, 1) + ' °F');
+    set(`wd-choke-${wh.id}`, fmt(wh.chokePos, 1) + '%');
+    // Arc gauge for flow % of setpoint
+    const arcEl = document.getElementById(`arc-${wh.id}`);
+    if (arcEl) {
+      const flowPct = Math.min(100, (wh.flow / wh.setpoint) * 100);
+      const c = flowPct >= 90 ? '#00b050' : flowPct >= 50 ? '#ffd04a' : '#c00000';
+      renderArcGauge(arcEl, flowPct, c);
+    }
+  });
+
+  // Choke cards
+  state.wh.forEach(wh => {
+    const svgEl = document.getElementById(`choke-svg-${wh.id}`);
+    const pctEl = document.getElementById(`choke-pct-${wh.id}`);
+    const modeEl= document.getElementById(`choke-mode-${wh.id}`);
+    const color = chokeColor(wh.chokePos);
+    if (svgEl) renderChokeGauge(svgEl, wh.chokePos, color);
+    if (pctEl) { pctEl.textContent = fmt(wh.chokePos, 1) + '%'; pctEl.style.color = color; }
+    if (modeEl) {
+      modeEl.textContent = wh.manAuto ? 'AUTO' : 'MANUAL';
+      modeEl.className = 'choke-mode ' + (wh.manAuto ? 'mode-auto' : 'mode-man');
+    }
+    const set = (id, val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
+    set(`pt-ma-${wh.id}`, wh.manAuto ? 'AUTO' : 'MAN');
+    set(`pt-cf-${wh.id}`, fmt(wh.calcDesiredFlow, 3));
+  });
+
+  // Compressor grid
+  state.comp.forEach(c => {
+    const set = (id, val) => { const e=document.getElementById(id); if(e) e.textContent=val; };
+    const running = c.status === 'running';
+    set(`cg-flow-${c.id}`,  running ? fmt(c.flow, 3) : '—');
+    set(`cg-rpm-${c.id}`,   running ? Math.round(c.rpm).toString() : '—');
+    set(`cg-disc-${c.id}`,  running ? fmtPsi(c.discharge) : '—');
+    set(`cg-suct-${c.id}`,  running ? fmtPsi(c.suction) : '—');
+    set(`cg-temp-${c.id}`,  running ? fmt(c.temp, 1) : '—');
+    const util = running ? fmt(Math.min(100, c.flow / c.maxFlow * 100), 1) + '%' : '—';
+    set(`cg-util-${c.id}`,  util);
+    const barEl = document.getElementById(`cg-bar-${c.id}`);
+    if (barEl) barEl.style.width = running ? Math.min(100, c.flow / c.maxFlow * 100) + '%' : '0%';
+    const lbl = document.getElementById(`cg-barlbl-${c.id}`);
+    if (lbl) lbl.textContent = running ? fmt(c.flow, 3) + ' MMSCFD' : 'OFFLINE';
+    const stEl = document.getElementById(`comp-st-${c.id}`);
+    if (stEl) { stEl.textContent = c.status.toUpperCase(); stEl.className = 'comp-status ' + c.status; }
+    set(`csp-${c.id}`, fmt(c.flowSP, 3));
+  });
+}
+
+// ── Chart.js mini-charts ──
+let charts = {};
+function initCharts() {
+  const baseOpts = {
+    animation: false,
+    plugins: { legend: { labels: { color: '#888', font: { size: 10 } } } },
+    scales: {
+      x: { ticks: { color: '#555', maxTicksLimit: 8, font:{size:9} }, grid: { color: '#2a2a2a' } },
+      y: { ticks: { color: '#888', font:{size:9} }, grid: { color: '#2a2a2a' } }
+    }
+  };
+
+  // Total flow trend
+  charts.totalFlow = new Chart(document.getElementById('chart-total-flow'), {
+    type: 'line',
+    data: {
+      labels: Array.from({length: HIST}, (_, i) => i - HIST + 1 + 's'),
+      datasets: [{
+        label: 'Total Flow',
+        data: [...history.totalFlow],
+        borderColor: '#4db8ff', backgroundColor: 'rgba(77,184,255,0.1)',
+        borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.3
+      }]
+    },
+    options: { ...baseOpts, scales: { ...baseOpts.scales,
+      y: { ...baseOpts.scales.y, min: 0, max: 3.5,
+           title: { display: true, text: 'MMSCFD', color: '#666', font:{size:9} } }
+    }}
+  });
+
+  // Per-WH flow bar chart
+  charts.whFlow = new Chart(document.getElementById('chart-wh-flow'), {
+    type: 'bar',
+    data: {
+      labels: state.wh.map(w => `WH${w.id}`),
+      datasets: [{
+        label: 'Flow MMSCFD',
+        data: state.wh.map(w => w.flow),
+        backgroundColor: 'rgba(0,176,80,0.7)',
+        borderColor: '#00b050',
+        borderWidth: 1
+      },{
+        label: 'Setpoint',
+        data: state.wh.map(w => w.setpoint),
+        backgroundColor: 'rgba(77,184,255,0.2)',
+        borderColor: '#4db8ff',
+        borderWidth: 1,
+        type: 'line',
+        pointRadius: 3,
+        fill: false,
+        tension: 0
+      }]
+    },
+    options: { ...baseOpts }
+  });
+
+  // Pressure trend
+  const colors = ['#4db8ff','#00b050','#ffd04a','#ff4444'];
+  charts.pressure = new Chart(document.getElementById('chart-pressure'), {
+    type: 'line',
+    data: {
+      labels: Array.from({length: HIST}, (_,i) => i - HIST + 1 + 's'),
+      datasets: history.pressure.map((h,i) => ({
+        label: `WH${i+1} Prs`,
+        data: [...h],
+        borderColor: colors[i], backgroundColor: 'transparent',
+        borderWidth: 1.5, pointRadius: 0, tension: 0.3
+      }))
+    },
+    options: { ...baseOpts, scales: { ...baseOpts.scales,
+      y: { ...baseOpts.scales.y, min: 800, max: 3200,
+           title: { display: true, text: 'PSI', color: '#666', font:{size:9} } }
+    }}
+  });
+
+  // Comp flow bar chart
+  charts.compFlow = new Chart(document.getElementById('chart-comp-flow'), {
+    type: 'bar',
+    data: {
+      labels: state.comp.map(c => `Comp ${c.id}`),
+      datasets: [{
+        label: 'Flow MMSCFD',
+        data: state.comp.map(c => c.status==='running' ? c.flow : 0),
+        backgroundColor: state.comp.map(c => c.status==='running' ? 'rgba(0,176,80,0.7)' : 'rgba(100,100,100,0.4)'),
+        borderColor: state.comp.map(c => c.status==='running' ? '#00b050' : '#555'),
+        borderWidth: 1
+      },{
+        label: 'Setpoint',
+        data: state.comp.map(c => c.flowSP),
+        backgroundColor: 'transparent',
+        borderColor: '#ffd04a',
+        borderWidth: 1,
+        type: 'line', pointRadius: 4, fill: false
+      }]
+    },
+    options: { ...baseOpts }
+  });
+
+  // Choke vs Flow scatter-ish
+  charts.choke = new Chart(document.getElementById('chart-choke'), {
+    type: 'line',
+    data: {
+      labels: Array.from({length: HIST}, (_,i) => i - HIST + 1 + 's'),
+      datasets: [{
+        label: 'Avg Choke %',
+        data: [...history.choke],
+        borderColor: '#ffd04a', backgroundColor: 'rgba(255,208,74,0.1)',
+        borderWidth: 1.5, pointRadius: 0, fill: true, tension: 0.3,
+        yAxisID: 'y'
+      },{
+        label: 'Total Flow',
+        data: [...history.totalFlow],
+        borderColor: '#4db8ff', backgroundColor: 'transparent',
+        borderWidth: 1.5, pointRadius: 0, fill: false, tension: 0.3,
+        yAxisID: 'y1'
+      }]
+    },
+    options: {
+      animation: false,
+      plugins: { legend: { labels: { color: '#888', font:{size:10} } } },
+      scales: {
+        x: { ticks: { color: '#555', maxTicksLimit: 8, font:{size:9} }, grid: { color: '#2a2a2a' } },
+        y: { type: 'linear', position: 'left',
+             ticks: { color: '#ffd04a', font:{size:9} }, grid: { color: '#2a2a2a' },
+             title: { display:true, text:'Choke %', color:'#ffd04a', font:{size:9} } },
+        y1: { type: 'linear', position: 'right',
+              ticks: { color: '#4db8ff', font:{size:9} }, grid: { drawOnChartArea: false },
+              title: { display:true, text:'Flow MMscfd', color:'#4db8ff', font:{size:9} } }
+      }
+    }
+  });
+}
+
+function updateCharts() {
+  if (!charts.totalFlow) return;
+  charts.totalFlow.data.datasets[0].data = [...history.totalFlow];
+  charts.totalFlow.update('none');
+
+  charts.whFlow.data.datasets[0].data = state.wh.map(w => +w.flow.toFixed(4));
+  charts.whFlow.data.datasets[1].data = state.wh.map(w => +w.setpoint.toFixed(4));
+  charts.whFlow.update('none');
+
+  history.pressure.forEach((h, i) => {
+    charts.pressure.data.datasets[i].data = [...h];
+  });
+  charts.pressure.update('none');
+
+  charts.compFlow.data.datasets[0].data = state.comp.map(c => c.status==='running' ? +c.flow.toFixed(3) : 0);
+  charts.compFlow.data.datasets[1].data = state.comp.map(c => +c.flowSP.toFixed(3));
+  charts.compFlow.update('none');
+
+  charts.choke.data.datasets[0].data = [...history.choke];
+  charts.choke.data.datasets[1].data = [...history.totalFlow];
+  charts.choke.update('none');
+}
+
+// ── Clock ──
+function updateClock() {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString();
+}
+
+// ── Tabs ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('view-' + tab.dataset.view).classList.add('active');
+    if (tab.dataset.view === 'analytics') {
+      setTimeout(updateCharts, 50);
+    }
+  });
+});
+
+// ── Main loop ──
+let tick = 0;
+function loop() {
+  updateState();
+  render();
+  updateClock();
+  tick++;
+  if (tick % 3 === 0) updateCharts();
+  // Blink heartbeat
+  const hbEls = document.querySelectorAll('[id^="hb-"]');
+  hbEls.forEach(el => { el.textContent = tick % 2 === 0 ? 'OK' : '●'; });
+}
+
+// ── Boot ──
+// Load Chart.js from CDN then init
+const script = document.createElement('script');
+script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+script.onload = () => {
+  buildDOM();
+  render();
+  updateClock();
+  initCharts();
+  setInterval(loop, 1000);
+};
+document.head.appendChild(script);
+</script>
+</body>
+</html>
