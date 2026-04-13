@@ -154,11 +154,11 @@ body{background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;font-size
 
 <!-- Nav bar -->
 <div class="navbar">
-  <button class="nav-menu" onclick="openEditor()">MENU</button>
+  <button class="nav-menu" onclick="toast('Menu — use PREVIOUS / NEXT to navigate pages')">MENU</button>
   <button class="nav-config" onclick="openEditor()">SCREEN<br>CONFIG</button>
-  <button class="nav-stop">LOCAL<br>STOP</button>
-  <button class="nav-prev" onclick="navPage(-1)">PREVIOUS</button>
-  <button class="nav-next" onclick="navPage(1)">NEXT</button>
+  <button class="nav-stop" onclick="toast('LOCAL STOP')">LOCAL<br>STOP</button>
+  <button class="nav-prev" onclick="navPage(-1)" style="font-size:15px;font-weight:900;">&#9664; PREVIOUS</button>
+  <button class="nav-next" onclick="navPage(1)" style="font-size:15px;font-weight:900;">NEXT &#9654;</button>
   <button class="nav-ctrl" onclick="exportSVG()">CTRL</button>
 </div>
 
