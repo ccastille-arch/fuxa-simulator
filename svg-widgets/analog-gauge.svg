@@ -1,53 +1,92 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 235" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 242" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+<style>
+  @keyframes sdPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .sd-pulse { animation: sdPulse 2.5s ease-in-out infinite; }
+</style>
 
-  <!-- Gauge face -->
-  <rect id="gaugeFace" x="4" y="4" width="392" height="227" rx="10" ry="10"
-        fill="#1a1a2e" stroke="#3a3a50" stroke-width="2"/>
+<!-- Outer bezel -->
+<rect id="gaugeBezel" x="2" y="2" width="396" height="238" rx="14" ry="14"
+      fill="#111122" stroke="#4a4a60" stroke-width="1.5"/>
+<!-- Bezel highlight -->
+<line x1="18" y1="3.5" x2="382" y2="3.5" stroke="#3a3a55" stroke-width="1" opacity="0.4"/>
 
-  <!-- Background arc -->
-  <path id="bgArc" fill="none" stroke="#3a3a4a" stroke-width="24" stroke-linecap="butt"/>
+<!-- Inner face -->
+<rect id="gaugeFace" x="9" y="9" width="382" height="224" rx="8" ry="8"
+      fill="#1a1a2e" stroke="#2a2a40" stroke-width="1"/>
 
-  <!-- Zone arcs (low-shutdown through high-shutdown, left to right) -->
-  <path id="zoneLowSD"   fill="none" stroke-width="20" stroke-linecap="butt"/>
-  <path id="zoneLowAlm"  fill="none" stroke-width="20" stroke-linecap="butt"/>
-  <path id="zoneNormal"  fill="none" stroke-width="20" stroke-linecap="butt"/>
-  <path id="zoneHighAlm" fill="none" stroke-width="20" stroke-linecap="butt"/>
-  <path id="zoneHighSD"  fill="none" stroke-width="20" stroke-linecap="butt"/>
+<!-- Shadow arc (depth ring behind everything) -->
+<path id="shadowArc" fill="none" stroke="#0e0e1a" stroke-width="32" stroke-linecap="butt"
+      d="M 60.00 195.00 A 140 140 0 0 1 339.96 194.63"/>
 
-  <!-- Tick marks (dynamic) -->
-  <g id="tickGroup"></g>
+<!-- Background arc -->
+<path id="bgArc" fill="none" stroke="#3a3a4a" stroke-width="28" stroke-linecap="butt"
+      d="M 60.00 195.00 A 140 140 0 0 1 339.96 194.63"/>
 
-  <!-- Pointer needle -->
-  <line id="pointer" x1="200" y1="195" x2="200" y2="55"
-        stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+<!-- Zone arcs — pre-baked for default auto-scale range 27.5–522.5 -->
+<path id="zoneLowSD"  fill="none" stroke="#e74c3c" stroke-width="24" stroke-linecap="butt"
+      d="M 60.00 195.00 A 140 140 0 0 1 61.43 175.09"/>
+<path id="zoneLowAlm" fill="none" stroke="#f39c12" stroke-width="24" stroke-linecap="butt"
+      d="M 61.43 175.09 A 140 140 0 0 1 74.58 132.81"/>
+<path id="zoneNormal" fill="none" stroke="#2ecc71" stroke-width="24" stroke-linecap="butt"
+      d="M 74.58 132.81 A 140 140 0 0 1 299.86 96.87"/>
+<path id="zoneHighAlm" fill="none" stroke="#f39c12" stroke-width="24" stroke-linecap="butt"
+      d="M 299.86 96.87 A 140 140 0 0 1 338.57 175.09"/>
+<path id="zoneHighSD" fill="none" stroke="#e74c3c" stroke-width="24" stroke-linecap="butt"
+      d="M 338.57 175.09 A 140 140 0 0 1 339.96 194.63"/>
 
-  <!-- Pointer hub -->
-  <circle id="pointerHub" cx="200" cy="195" r="8" fill="#ffffff"/>
+<!-- Major tick marks — pre-baked at 0/25/50/75/100 % -->
+<g id="tickGroup">
+  <line x1="43" y1="195" x2="30" y2="195" stroke="#707070" stroke-width="2"/>
+  <line x1="89.0" y1="84.0" x2="79.8" y2="74.8" stroke="#707070" stroke-width="2"/>
+  <line x1="200" y1="38" x2="200" y2="25" stroke="#707070" stroke-width="2"/>
+  <line x1="311.0" y1="84.0" x2="320.2" y2="74.8" stroke="#707070" stroke-width="2"/>
+  <line x1="357" y1="195" x2="370" y2="195" stroke="#707070" stroke-width="2"/>
+</g>
 
-  <!-- Label text -->
-  <text id="labelText" x="200" y="108"
-        text-anchor="middle" font-family="Arial,Helvetica,sans-serif"
-        font-size="15" fill="#a0a0a0">Process Value</text>
+<!-- Limit markers — pre-baked triangles at threshold angles -->
+<g id="markerGroup">
+  <polygon id="markerLowSD"  fill="#e74c3c" points="44.4,172.7 31.2,175.2 32.4,166.4"/>
+  <polygon id="markerLowAlm" fill="#f39c12" points="59.4,125.3 45.9,123.2 49.7,115.6"/>
+  <polygon id="markerHighAlm" fill="#f39c12" points="312.0,85.0 317.9,72.6 324.3,79.0"/>
+  <polygon id="markerHighSD" fill="#e74c3c" points="355.4,172.7 367.6,166.4 368.9,175.2"/>
+</g>
 
-  <!-- Value text -->
-  <text id="valueText" x="200" y="178"
-        text-anchor="middle" font-family="Arial,Helvetica,sans-serif"
-        font-size="38" font-weight="bold" fill="#e0e0e0">0.0</text>
+<!-- Hub outer ring (below pointer) -->
+<circle id="pointerHubOuter" cx="200" cy="195" r="11" fill="#222235" stroke="#505060" stroke-width="1"/>
 
-  <!-- Unit text -->
-  <text id="unitText" x="200" y="198"
-        text-anchor="middle" font-family="Arial,Helvetica,sans-serif"
-        font-size="13" fill="#a0a0a0">psi</text>
+<!-- Tapered pointer needle — pre-baked at angle 180 (value=0 clamped left) -->
+<polygon id="pointer" fill="#ffffff" points="184,199 50,195 184,191"/>
 
-  <!-- Min display -->
-  <text id="minText" x="52" y="212"
-        text-anchor="middle" font-family="Arial,Helvetica,sans-serif"
-        font-size="11" fill="#707070"></text>
+<!-- Hub inner -->
+<circle id="pointerHub" cx="200" cy="195" r="6" fill="#ffffff"/>
 
-  <!-- Max display -->
-  <text id="maxText" x="348" y="212"
-        text-anchor="middle" font-family="Arial,Helvetica,sans-serif"
-        font-size="11" fill="#707070"></text>
+<!-- Label -->
+<text id="labelText" x="200" y="88" text-anchor="middle"
+      font-family="Arial,Helvetica,sans-serif" font-size="13" fill="#a0a0a0">Process Value</text>
+
+<!-- Value (pre-set red + pulse since default value 0 is in shutdown) -->
+<text id="valueText" x="200" y="177" text-anchor="middle" class="sd-pulse"
+      font-family="Arial,Helvetica,sans-serif" font-size="46" font-weight="bold"
+      fill="#e74c3c">0.0</text>
+
+<!-- Unit -->
+<text id="unitText" x="200" y="198" text-anchor="middle"
+      font-family="Arial,Helvetica,sans-serif" font-size="14" fill="#a0a0a0">psi</text>
+
+<!-- Rate-of-change indicator -->
+<text id="rateText" x="262" y="170" text-anchor="start"
+      font-family="Arial,Helvetica,sans-serif" font-size="16" fill="#707070"></text>
+
+<!-- Min display -->
+<text id="minText" x="48" y="214" text-anchor="middle"
+      font-family="Arial,Helvetica,sans-serif" font-size="11" fill="#707070">27.5</text>
+
+<!-- Max display -->
+<text id="maxText" x="352" y="214" text-anchor="middle"
+      font-family="Arial,Helvetica,sans-serif" font-size="11" fill="#707070">522.5</text>
 
 <script>
 //<![CDATA[
@@ -57,7 +96,6 @@
 // ============================================================
 //!export-start
 
-// --- Display identity ---
 var _ps_label           = "Process Value";
 var _ps_unit            = "psi";
 var _pn_precision       = 1;
@@ -66,26 +104,21 @@ var _pb_showLabel       = true;
 var _pb_showUnit        = true;
 var _pb_showMinMaxText  = true;
 
-// --- Live process value ---
 var _pn_value           = 0;
 
-// --- Full instrument range ---
 var _pn_fullMin         = 0;
 var _pn_fullMax         = 1000;
 
-// --- Alarm / shutdown thresholds ---
 var _pn_lowShutdown     = 50;
 var _pn_lowAlarm        = 100;
 var _pn_highAlarm       = 400;
 var _pn_highShutdown    = 500;
 
-// --- Auto-scaling control ---
 var _pb_autoScale           = true;
 var _pn_manualDisplayMin    = 0;
 var _pn_manualDisplayMax    = 500;
 var _pn_scalePaddingPercent = 10;
 
-// --- Colors ---
 var _pc_bgArcColor    = "#3a3a4a";
 var _pc_normalColor   = "#2ecc71";
 var _pc_alarmColor    = "#f39c12";
@@ -97,7 +130,6 @@ var _pc_tickColor     = "#707070";
 var _pc_faceColor     = "#1a1a2e";
 var _pc_borderColor   = "#3a3a50";
 
-// --- Optional writeback ---
 var _pb_enableWriteback = false;
 
 //!export-end
@@ -105,88 +137,74 @@ var _pb_enableWriteback = false;
 // ============================================================
 //  Constants
 // ============================================================
-var SVG_NS       = "http://www.w3.org/2000/svg";
-var CX           = 200;
-var CY           = 195;
-var R            = 140;   // zone-band centre radius
-var ARC_BG_W     = 24;    // background arc stroke width
-var ZONE_W       = 20;    // zone arc stroke width
-var NEEDLE_TIP   = 148;   // pointer tip radius
-var NEEDLE_BASE  = 14;    // pointer base radius (just past hub)
-var HUB_R        = 8;
-var START_DEG    = 180;   // left end of gauge (0 %)
-var END_DEG      = 0;     // right end of gauge (100 %)
-var SWEEP_DEG    = 180;
+var SVG_NS     = "http://www.w3.org/2000/svg";
+var CX         = 200;
+var CY         = 195;
+var R          = 140;
+var ZONE_W     = 24;
+var BG_W       = 28;
+var SHADOW_W   = 32;
+var NEEDLE_TIP = 150;
+var NEEDLE_BASE= 16;
+var NEEDLE_HALF= 4;
+var HUB_R      = 6;
+var TICK_R1    = 157;
+var TICK_R2    = 170;
+var MKR_TIP_R  = 157;
+var MKR_BASE_R = 170;
+var MKR_HALF   = 1.5;
+var START_DEG  = 180;
+var END_DEG    = 0;
+var SWEEP_DEG  = 180;
 
-var _initDone = false;
-var _dragging = false;
+var _initDone  = false;
+var _dragging  = false;
+var _prevValue = null;
 
 // ============================================================
-//  Safe-parse helpers
+//  Helpers
 // ============================================================
 
-function safeNum(v, fallback) {
-  if (v === null || v === undefined || v === "") return fallback;
+function safeNum(v, fb) {
+  if (v === null || v === undefined || v === "") return fb;
   var n = Number(v);
-  return isNaN(n) ? fallback : n;
+  return isNaN(n) ? fb : n;
 }
-
-function safeBool(v, fallback) {
+function safeBool(v, fb) {
   if (v === true  || v === "true"  || v === 1 || v === "1") return true;
   if (v === false || v === "false" || v === 0 || v === "0") return false;
-  return fallback;
+  return fb;
 }
-
-function clamp(v, lo, hi) {
-  return Math.max(lo, Math.min(hi, v));
-}
-
-// ============================================================
-//  Geometry helpers
-// ============================================================
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 function polarToCartesian(cx, cy, r, deg) {
   var rad = deg * Math.PI / 180;
-  return {
-    x: cx + r * Math.cos(rad),
-    y: cy - r * Math.sin(rad)   // SVG Y is flipped
-  };
+  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
 }
 
-/**
- * SVG arc path from startAng to endAng (degrees, math convention).
- * startAng > endAng  — sweeps CW visually (CCW in SVG coords).
- * Returns empty string if span is negligible.
- */
-function describeArc(cx, cy, r, startAng, endAng) {
-  var diff = startAng - endAng;
+function describeArc(cx, cy, r, sa, ea) {
+  var diff = sa - ea;
   if (diff < 0) diff += 360;
   if (diff < 0.15) return "";
-  // Nudge away from exactly 180 to avoid SVG ambiguity
-  if (Math.abs(diff - 180) < 0.5) endAng += 0.15;
-  var s = polarToCartesian(cx, cy, r, startAng);
-  var e = polarToCartesian(cx, cy, r, endAng);
-  var large = diff > 180 ? 1 : 0;
+  if (Math.abs(diff - 180) < 0.5) ea += 0.15;
+  var s = polarToCartesian(cx, cy, r, sa);
+  var e = polarToCartesian(cx, cy, r, ea);
+  var lg = diff > 180 ? 1 : 0;
   return "M " + s.x.toFixed(2) + " " + s.y.toFixed(2) +
-         " A " + r + " " + r + " 0 " + large + " 1 " +
+         " A " + r + " " + r + " 0 " + lg + " 1 " +
          e.x.toFixed(2) + " " + e.y.toFixed(2);
 }
 
-/** Map a process value to gauge angle (degrees). */
 function valueToAngle(val, dMin, dMax) {
   if (dMax === dMin) return START_DEG;
-  var frac = (val - dMin) / (dMax - dMin);
-  return START_DEG - frac * SWEEP_DEG;
+  return START_DEG - ((val - dMin) / (dMax - dMin)) * SWEEP_DEG;
 }
-
-/** Map a gauge angle back to a process value. */
 function angleToValue(ang, dMin, dMax) {
-  var frac = (START_DEG - ang) / SWEEP_DEG;
-  return dMin + frac * (dMax - dMin);
+  return dMin + ((START_DEG - ang) / SWEEP_DEG) * (dMax - dMin);
 }
 
 // ============================================================
-//  Auto-scaling logic
+//  Display range
 // ============================================================
 
 function computeDisplayRange() {
@@ -194,207 +212,215 @@ function computeDisplayRange() {
   var fMax = safeNum(_pn_fullMax, 100);
   if (fMax <= fMin) fMax = fMin + 100;
 
-  // --- Auto-scale path ---
   if (_pb_autoScale) {
-    var ls = safeNum(_pn_lowShutdown,  NaN);
-    var la = safeNum(_pn_lowAlarm,     NaN);
-    var ha = safeNum(_pn_highAlarm,    NaN);
-    var hs = safeNum(_pn_highShutdown, NaN);
-
-    var valid = isFinite(ls) && isFinite(la) && isFinite(ha) && isFinite(hs)
-                && ls < la && la < ha && ha < hs;
-
-    if (valid) {
-      var span = hs - ls;
-      if (span <= 0) span = 1;               // safety
-      var pad  = span * safeNum(_pn_scalePaddingPercent, 10) / 100;
-      var dMin = ls - pad / 2;
-      var dMax = hs + pad / 2;
-      dMin = Math.max(dMin, fMin);            // clamp to instrument range
-      dMax = Math.min(dMax, fMax);
-      if (dMax <= dMin) dMax = dMin + 1;      // safety
+    var ls = safeNum(_pn_lowShutdown, NaN), la = safeNum(_pn_lowAlarm, NaN);
+    var ha = safeNum(_pn_highAlarm, NaN),   hs = safeNum(_pn_highShutdown, NaN);
+    if (isFinite(ls) && isFinite(la) && isFinite(ha) && isFinite(hs)
+        && ls < la && la < ha && ha < hs) {
+      var span = hs - ls; if (span <= 0) span = 1;
+      var pad = span * safeNum(_pn_scalePaddingPercent, 10) / 100;
+      var dMin = Math.max(ls - pad / 2, fMin);
+      var dMax = Math.min(hs + pad / 2, fMax);
+      if (dMax <= dMin) dMax = dMin + 1;
       return { min: dMin, max: dMax };
     }
-    // Thresholds unusable — try manual, then full range
   }
-
-  // --- Manual / fallback path ---
   var mMin = safeNum(_pn_manualDisplayMin, NaN);
   var mMax = safeNum(_pn_manualDisplayMax, NaN);
-  if (isFinite(mMin) && isFinite(mMax) && mMax > mMin) {
-    return { min: mMin, max: mMax };
-  }
+  if (isFinite(mMin) && isFinite(mMax) && mMax > mMin) return { min: mMin, max: mMax };
   return { min: fMin, max: fMax };
 }
 
 // ============================================================
-//  State-colour logic
+//  State colour
 // ============================================================
 
 function computeStateColor(val) {
-  var v  = safeNum(val, 0);
-  var ls = safeNum(_pn_lowShutdown,  -Infinity);
-  var la = safeNum(_pn_lowAlarm,     -Infinity);
-  var ha = safeNum(_pn_highAlarm,     Infinity);
-  var hs = safeNum(_pn_highShutdown,  Infinity);
-
+  var v = safeNum(val, 0);
+  var ls = safeNum(_pn_lowShutdown, -Infinity), la = safeNum(_pn_lowAlarm, -Infinity);
+  var ha = safeNum(_pn_highAlarm, Infinity),    hs = safeNum(_pn_highShutdown, Infinity);
   if (v <= ls || v >= hs) return _pc_shutdownColor;
   if (v <= la || v >= ha) return _pc_alarmColor;
   return _pc_normalColor;
 }
 
+function isShutdownState(val) {
+  var v = safeNum(val, 0);
+  var ls = safeNum(_pn_lowShutdown, -Infinity);
+  var hs = safeNum(_pn_highShutdown, Infinity);
+  return (v <= ls || v >= hs);
+}
+
 // ============================================================
-//  Zone-arc helper
+//  Zone arcs
 // ============================================================
 
-function setZonePath(id, valStart, valEnd, color, dMin, dMax) {
+function setZonePath(id, v0, v1, color, dMin, dMax) {
   var el = document.getElementById(id);
   if (!el) return;
-  if (!isFinite(valStart) || !isFinite(valEnd) || valStart >= valEnd) {
-    el.setAttribute("d", "");
-    return;
-  }
-  var s = clamp(valStart, dMin, dMax);
-  var e = clamp(valEnd,   dMin, dMax);
+  if (!isFinite(v0) || !isFinite(v1) || v0 >= v1) { el.setAttribute("d", ""); return; }
+  var s = clamp(v0, dMin, dMax), e = clamp(v1, dMin, dMax);
   if (s >= e) { el.setAttribute("d", ""); return; }
-
-  var sAng = valueToAngle(s, dMin, dMax);
-  var eAng = valueToAngle(e, dMin, dMax);
-  el.setAttribute("d", describeArc(CX, CY, R, sAng, eAng));
+  el.setAttribute("d", describeArc(CX, CY, R, valueToAngle(s, dMin, dMax), valueToAngle(e, dMin, dMax)));
   el.setAttribute("stroke", color);
 }
 
 // ============================================================
-//  Tick-mark drawing
+//  Ticks (major only, clean)
 // ============================================================
 
 function drawTicks() {
   var g = document.getElementById("tickGroup");
   if (!g) return;
   while (g.firstChild) g.removeChild(g.firstChild);
-
-  var total = 10;  // divisions (11 marks)
-  for (var i = 0; i <= total; i++) {
-    var frac   = i / total;
-    var angle  = START_DEG - frac * SWEEP_DEG;
-    var major  = (i % 2 === 0);
-    var r1     = R + ZONE_W / 2 + 2;             // just outside arc band
-    var r2     = major ? r1 + 12 : r1 + 6;
-    var p1     = polarToCartesian(CX, CY, r1, angle);
-    var p2     = polarToCartesian(CX, CY, r2, angle);
-    var ln     = document.createElementNS(SVG_NS, "line");
-    ln.setAttribute("x1", p1.x.toFixed(2));
-    ln.setAttribute("y1", p1.y.toFixed(2));
-    ln.setAttribute("x2", p2.x.toFixed(2));
-    ln.setAttribute("y2", p2.y.toFixed(2));
+  var count = 4; // 5 major ticks at 0%, 25%, 50%, 75%, 100%
+  for (var i = 0; i <= count; i++) {
+    var angle = START_DEG - (i / count) * SWEEP_DEG;
+    var p1 = polarToCartesian(CX, CY, TICK_R1, angle);
+    var p2 = polarToCartesian(CX, CY, TICK_R2, angle);
+    var ln = document.createElementNS(SVG_NS, "line");
+    ln.setAttribute("x1", p1.x.toFixed(1));
+    ln.setAttribute("y1", p1.y.toFixed(1));
+    ln.setAttribute("x2", p2.x.toFixed(1));
+    ln.setAttribute("y2", p2.y.toFixed(1));
     ln.setAttribute("stroke", _pc_tickColor);
-    ln.setAttribute("stroke-width", major ? "2" : "1");
+    ln.setAttribute("stroke-width", "2");
     g.appendChild(ln);
   }
 }
 
 // ============================================================
-//  Main gauge update
+//  Limit markers (small triangles)
 // ============================================================
 
-function updateGauge() {
-  var range   = computeDisplayRange();
-  var dMin    = range.min;
-  var dMax    = range.max;
-  var val     = safeNum(_pn_value, 0);
-  var prec    = Math.max(0, Math.round(safeNum(_pn_precision, 1)));
+function markerPoints(ang) {
+  var tip = polarToCartesian(CX, CY, MKR_TIP_R, ang);
+  var b1  = polarToCartesian(CX, CY, MKR_BASE_R, ang + MKR_HALF);
+  var b2  = polarToCartesian(CX, CY, MKR_BASE_R, ang - MKR_HALF);
+  return tip.x.toFixed(1)+","+tip.y.toFixed(1)+" "+
+         b1.x.toFixed(1)+","+b1.y.toFixed(1)+" "+
+         b2.x.toFixed(1)+","+b2.y.toFixed(1);
+}
 
-  // --- Face ---
-  var face = document.getElementById("gaugeFace");
-  if (face) {
-    face.setAttribute("fill",   _pc_faceColor);
-    face.setAttribute("stroke", _pc_borderColor);
-  }
-
-  // --- Background arc ---
-  var bg = document.getElementById("bgArc");
-  if (bg) {
-    bg.setAttribute("d",      describeArc(CX, CY, R, START_DEG, END_DEG));
-    bg.setAttribute("stroke", _pc_bgArcColor);
-  }
-
-  // --- Zone arcs ---
-  var ls = safeNum(_pn_lowShutdown,  dMin);
-  var la = safeNum(_pn_lowAlarm,     dMin);
-  var ha = safeNum(_pn_highAlarm,    dMax);
-  var hs = safeNum(_pn_highShutdown, dMax);
-
-  setZonePath("zoneLowSD",   dMin, ls,   _pc_shutdownColor, dMin, dMax);
-  setZonePath("zoneLowAlm",  ls,   la,   _pc_alarmColor,    dMin, dMax);
-  setZonePath("zoneNormal",  la,   ha,   _pc_normalColor,   dMin, dMax);
-  setZonePath("zoneHighAlm", ha,   hs,   _pc_alarmColor,    dMin, dMax);
-  setZonePath("zoneHighSD",  hs,   dMax, _pc_shutdownColor, dMin, dMax);
-
-  // --- Ticks ---
-  drawTicks();
-
-  // --- Pointer ---
-  var clamped   = clamp(val, dMin, dMax);
-  var angle     = valueToAngle(clamped, dMin, dMax);
-  var pBase     = polarToCartesian(CX, CY, NEEDLE_BASE, angle);
-  var pTip      = polarToCartesian(CX, CY, NEEDLE_TIP,  angle);
-  var stateClr  = computeStateColor(val);
-
-  var ptr = document.getElementById("pointer");
-  if (ptr) {
-    ptr.setAttribute("x1", pBase.x.toFixed(2));
-    ptr.setAttribute("y1", pBase.y.toFixed(2));
-    ptr.setAttribute("x2", pTip.x.toFixed(2));
-    ptr.setAttribute("y2", pTip.y.toFixed(2));
-    ptr.setAttribute("stroke", _pc_pointerColor);
-  }
-  var hub = document.getElementById("pointerHub");
-  if (hub) hub.setAttribute("fill", _pc_pointerColor);
-
-  // --- Label ---
-  var lbl = document.getElementById("labelText");
-  if (lbl) {
-    lbl.textContent = _pb_showLabel ? _ps_label : "";
-    lbl.setAttribute("fill", _pc_labelColor);
-  }
-
-  // --- Value (colour follows alarm state) ---
-  var vtx = document.getElementById("valueText");
-  if (vtx) {
-    vtx.textContent = _pb_showValue ? val.toFixed(prec) : "";
-    vtx.setAttribute("fill", stateClr);
-  }
-
-  // --- Unit ---
-  var utx = document.getElementById("unitText");
-  if (utx) {
-    utx.textContent = _pb_showUnit ? _ps_unit : "";
-    utx.setAttribute("fill", _pc_labelColor);
-  }
-
-  // --- Min / Max ---
-  var mn = document.getElementById("minText");
-  if (mn) {
-    mn.textContent = _pb_showMinMaxText ? dMin.toFixed(prec) : "";
-    mn.setAttribute("fill", _pc_tickColor);
-  }
-  var mx = document.getElementById("maxText");
-  if (mx) {
-    mx.textContent = _pb_showMinMaxText ? dMax.toFixed(prec) : "";
-    mx.setAttribute("fill", _pc_tickColor);
+function updateMarkers(dMin, dMax) {
+  var defs = [
+    { id:"markerLowSD",  v:_pn_lowShutdown,  c:_pc_shutdownColor },
+    { id:"markerLowAlm", v:_pn_lowAlarm,     c:_pc_alarmColor },
+    { id:"markerHighAlm",v:_pn_highAlarm,    c:_pc_alarmColor },
+    { id:"markerHighSD", v:_pn_highShutdown, c:_pc_shutdownColor }
+  ];
+  for (var i = 0; i < defs.length; i++) {
+    var d = defs[i], el = document.getElementById(d.id);
+    if (!el) continue;
+    var v = safeNum(d.v, NaN);
+    if (!isFinite(v) || v <= dMin || v >= dMax) { el.setAttribute("points",""); continue; }
+    el.setAttribute("points", markerPoints(valueToAngle(v, dMin, dMax)));
+    el.setAttribute("fill", d.c);
   }
 }
 
 // ============================================================
-//  putValue — called by FUXA on tag updates
+//  Pointer (tapered triangle)
+// ============================================================
+
+function pointerPoints(angle) {
+  var tip = polarToCartesian(CX, CY, NEEDLE_TIP, angle);
+  var bc  = polarToCartesian(CX, CY, NEEDLE_BASE, angle);
+  var pRad = (angle + 90) * Math.PI / 180;
+  var dx = NEEDLE_HALF * Math.cos(pRad);
+  var dy = -NEEDLE_HALF * Math.sin(pRad);
+  return (bc.x+dx).toFixed(1)+","+(bc.y+dy).toFixed(1)+" "+
+         tip.x.toFixed(1)+","+tip.y.toFixed(1)+" "+
+         (bc.x-dx).toFixed(1)+","+(bc.y-dy).toFixed(1);
+}
+
+// ============================================================
+//  Main update
+// ============================================================
+
+function updateGauge() {
+  var range = computeDisplayRange(), dMin = range.min, dMax = range.max;
+  var val  = safeNum(_pn_value, 0);
+  var prec = Math.max(0, Math.round(safeNum(_pn_precision, 1)));
+
+  // Face
+  var face = document.getElementById("gaugeFace");
+  if (face) { face.setAttribute("fill", _pc_faceColor); face.setAttribute("stroke", _pc_borderColor); }
+
+  // Arcs
+  var fullArc = describeArc(CX, CY, R, START_DEG, END_DEG);
+  var bg = document.getElementById("bgArc");
+  if (bg) { bg.setAttribute("d", fullArc); bg.setAttribute("stroke", _pc_bgArcColor); }
+  var sh = document.getElementById("shadowArc");
+  if (sh) sh.setAttribute("d", fullArc);
+
+  // Zones
+  var ls = safeNum(_pn_lowShutdown, dMin), la = safeNum(_pn_lowAlarm, dMin);
+  var ha = safeNum(_pn_highAlarm, dMax),   hs = safeNum(_pn_highShutdown, dMax);
+  setZonePath("zoneLowSD",  dMin, ls, _pc_shutdownColor, dMin, dMax);
+  setZonePath("zoneLowAlm", ls, la,   _pc_alarmColor,    dMin, dMax);
+  setZonePath("zoneNormal", la, ha,   _pc_normalColor,   dMin, dMax);
+  setZonePath("zoneHighAlm",ha, hs,   _pc_alarmColor,    dMin, dMax);
+  setZonePath("zoneHighSD", hs, dMax, _pc_shutdownColor, dMin, dMax);
+
+  // Ticks & markers
+  drawTicks();
+  updateMarkers(dMin, dMax);
+
+  // Pointer
+  var clamped = clamp(val, dMin, dMax);
+  var angle   = valueToAngle(clamped, dMin, dMax);
+  var stClr   = computeStateColor(val);
+
+  var ptr = document.getElementById("pointer");
+  if (ptr) { ptr.setAttribute("points", pointerPoints(angle)); ptr.setAttribute("fill", _pc_pointerColor); }
+  var hub = document.getElementById("pointerHub");
+  if (hub) hub.setAttribute("fill", _pc_pointerColor);
+
+  // Label
+  var lbl = document.getElementById("labelText");
+  if (lbl) { lbl.textContent = _pb_showLabel ? _ps_label : ""; lbl.setAttribute("fill", _pc_labelColor); }
+
+  // Value — colour and pulse follow alarm state
+  var vtx = document.getElementById("valueText");
+  if (vtx) {
+    vtx.textContent = _pb_showValue ? val.toFixed(prec) : "";
+    vtx.setAttribute("fill", stClr);
+    if (isShutdownState(val)) { vtx.setAttribute("class", "sd-pulse"); }
+    else { vtx.removeAttribute("class"); }
+  }
+
+  // Unit
+  var utx = document.getElementById("unitText");
+  if (utx) { utx.textContent = _pb_showUnit ? _ps_unit : ""; utx.setAttribute("fill", _pc_labelColor); }
+
+  // Rate-of-change indicator
+  var rte = document.getElementById("rateText");
+  if (rte) {
+    if (_prevValue !== null) {
+      var dv = val - _prevValue;
+      if (dv > 0.01)       { rte.textContent = "\u25B2"; rte.setAttribute("fill", stClr); }
+      else if (dv < -0.01) { rte.textContent = "\u25BC"; rte.setAttribute("fill", stClr); }
+      else                 { rte.textContent = ""; }
+    }
+    _prevValue = val;
+  }
+
+  // Min / Max
+  var mn = document.getElementById("minText");
+  if (mn) { mn.textContent = _pb_showMinMaxText ? dMin.toFixed(prec) : ""; mn.setAttribute("fill", _pc_tickColor); }
+  var mx = document.getElementById("maxText");
+  if (mx) { mx.textContent = _pb_showMinMaxText ? dMax.toFixed(prec) : ""; mx.setAttribute("fill", _pc_tickColor); }
+}
+
+// ============================================================
+//  putValue — FUXA callback
 // ============================================================
 
 function putValue(id, value) {
   switch (id) {
-    // strings
-    case "_ps_label":           _ps_label = String(value || ""); break;
-    case "_ps_unit":            _ps_unit  = String(value || ""); break;
-    // numbers
+    case "_ps_label": _ps_label = String(value || ""); break;
+    case "_ps_unit":  _ps_unit  = String(value || ""); break;
     case "_pn_value":               _pn_value               = safeNum(value, _pn_value); break;
     case "_pn_precision":           _pn_precision           = safeNum(value, _pn_precision); break;
     case "_pn_fullMin":             _pn_fullMin             = safeNum(value, _pn_fullMin); break;
@@ -406,14 +432,12 @@ function putValue(id, value) {
     case "_pn_manualDisplayMin":    _pn_manualDisplayMin    = safeNum(value, _pn_manualDisplayMin); break;
     case "_pn_manualDisplayMax":    _pn_manualDisplayMax    = safeNum(value, _pn_manualDisplayMax); break;
     case "_pn_scalePaddingPercent": _pn_scalePaddingPercent = safeNum(value, _pn_scalePaddingPercent); break;
-    // booleans
     case "_pb_showValue":       _pb_showValue       = safeBool(value, _pb_showValue); break;
     case "_pb_showLabel":       _pb_showLabel       = safeBool(value, _pb_showLabel); break;
     case "_pb_showUnit":        _pb_showUnit        = safeBool(value, _pb_showUnit); break;
     case "_pb_showMinMaxText":  _pb_showMinMaxText  = safeBool(value, _pb_showMinMaxText); break;
     case "_pb_autoScale":       _pb_autoScale       = safeBool(value, _pb_autoScale); break;
     case "_pb_enableWriteback": _pb_enableWriteback = safeBool(value, _pb_enableWriteback); break;
-    // colors
     case "_pc_bgArcColor":    _pc_bgArcColor    = String(value || _pc_bgArcColor); break;
     case "_pc_normalColor":   _pc_normalColor   = String(value || _pc_normalColor); break;
     case "_pc_alarmColor":    _pc_alarmColor    = String(value || _pc_alarmColor); break;
@@ -436,86 +460,49 @@ function setupWriteback() {
   var svg = document.querySelector("svg");
   if (!svg) return;
 
-  function svgPoint(evt) {
-    var pt = svg.createSVGPoint();
-    pt.x = evt.clientX;
-    pt.y = evt.clientY;
+  function svgPt(evt) {
+    var pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY;
     return pt.matrixTransform(svg.getScreenCTM().inverse());
   }
-
   function beginDrag(evt) {
     if (!_pb_enableWriteback) return;
-    var pt = svgPoint(evt);
-    // Only start if click is in upper-half arc region
+    var pt = svgPt(evt);
     if (pt.y > CY + 5) return;
-    var dx = pt.x - CX, dy = CY - pt.y;
-    var dist = Math.sqrt(dx * dx + dy * dy);
+    var dx = pt.x - CX, dy = CY - pt.y, dist = Math.sqrt(dx*dx + dy*dy);
     if (dist < 25 || dist > 185) return;
-    _dragging = true;
-    applyDrag(evt);
+    _dragging = true; applyDrag(evt);
   }
-
-  function moveDrag(evt) {
-    if (!_dragging) return;
-    applyDrag(evt);
-  }
-
-  function endDrag() {
-    _dragging = false;
-  }
-
+  function moveDrag(evt) { if (_dragging) applyDrag(evt); }
+  function endDrag()     { _dragging = false; }
   function applyDrag(evt) {
-    var pt  = svgPoint(evt);
-    var dx  = pt.x - CX;
-    var dy  = CY - pt.y;
-    var ang = Math.atan2(dy, dx) * 180 / Math.PI;
-    ang = clamp(ang, 0, 180);
-
-    var range  = computeDisplayRange();
-    var newVal = angleToValue(ang, range.min, range.max);
-    newVal = clamp(newVal, range.min, range.max);
+    var pt = svgPt(evt), dx = pt.x - CX, dy = CY - pt.y;
+    var ang = clamp(Math.atan2(dy, dx) * 180 / Math.PI, 0, 180);
+    var range = computeDisplayRange();
+    var nv = clamp(angleToValue(ang, range.min, range.max), range.min, range.max);
     var prec = Math.max(0, Math.round(safeNum(_pn_precision, 1)));
-    newVal = parseFloat(newVal.toFixed(prec));
-
-    _pn_value = newVal;
+    _pn_value = parseFloat(nv.toFixed(prec));
     updateGauge();
-    if (typeof postValue === "function") {
-      postValue("_pn_value", newVal);
-    }
+    if (typeof postValue === "function") postValue("_pn_value", _pn_value);
   }
 
-  // Mouse events
-  svg.addEventListener("mousedown",  beginDrag);
-  svg.addEventListener("mousemove",  moveDrag);
-  svg.addEventListener("mouseup",    endDrag);
+  svg.addEventListener("mousedown", beginDrag);
+  svg.addEventListener("mousemove", moveDrag);
+  svg.addEventListener("mouseup", endDrag);
   svg.addEventListener("mouseleave", endDrag);
-
-  // Touch events
-  svg.addEventListener("touchstart", function(e) {
-    beginDrag(e.touches[0]);
-    if (_dragging) e.preventDefault();
-  }, { passive: false });
-  svg.addEventListener("touchmove", function(e) {
-    if (!_dragging) return;
-    moveDrag(e.touches[0]);
-    e.preventDefault();
-  }, { passive: false });
-  svg.addEventListener("touchend",    endDrag);
+  svg.addEventListener("touchstart", function(e){ beginDrag(e.touches[0]); if(_dragging) e.preventDefault(); }, {passive:false});
+  svg.addEventListener("touchmove",  function(e){ if(!_dragging) return; moveDrag(e.touches[0]); e.preventDefault(); }, {passive:false});
+  svg.addEventListener("touchend", endDrag);
   svg.addEventListener("touchcancel", endDrag);
 }
 
 // ============================================================
-//  Initialisation
+//  Init
 // ============================================================
 
 function init() {
-  if (!_initDone) {
-    setupWriteback();
-    _initDone = true;
-  }
+  if (!_initDone) { setupWriteback(); _initDone = true; }
   updateGauge();
 }
-
 init();
 
 //]]>
