@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Murphy-Style Gauge Simulator — FUXA Compressor Package</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0a0a14;color:#c0c0c0;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;}
+
+/* === Top bar === */
+.topbar{background:#111122;border-bottom:1px solid #2a2a40;padding:8px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.topbar h1{font-size:15px;font-weight:600;color:#e0e0e0;}
+.topbar .tag{background:#00aa00;color:#000;font-size:10px;font-weight:700;padding:2px 8px;border-radius:3px;text-transform:uppercase;}
+.topbar .sep{flex:1;}
+.topbar button{background:#1a1a2e;border:1px solid #3a3a50;color:#c0c0c0;padding:5px 14px;border-radius:4px;font-size:12px;cursor:pointer;}
+.topbar button:hover{background:#2a2a45;border-color:#5a5a70;}
+.topbar button.primary{border-color:#00aa00;color:#00aa00;}
+.topbar button.primary:hover{background:#0a2a0a;}
+.topbar button.danger{border-color:#cc4444;color:#cc4444;}
+#stateBadge{display:inline-block;padding:3px 10px;border-radius:3px;font-size:11px;font-weight:700;text-transform:uppercase;}
+
+/* === Main layout === */
+.main{display:flex;height:calc(100vh - 42px);}
+
+/* === Gauge + sim area === */
+.gauge-col{flex:1;display:flex;flex-direction:column;overflow-y:auto;padding:16px;align-items:center;background:#0d0d1a;min-width:320px;}
+.gauge-wrap{width:100%;max-width:420px;}
+.gauge-wrap object{width:100%;height:auto;display:block;}
+
+/* === Sim bar === */
+.sim-bar{width:100%;max-width:420px;margin-top:12px;background:#141428;border:1px solid #2a2a40;border-radius:8px;padding:12px 16px;}
+.sim-bar label{display:block;font-size:10px;color:#606070;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.sim-row{display:flex;align-items:center;gap:10px;}
+.sim-row input[type=range]{flex:1;accent-color:#00aa00;height:5px;}
+.sim-val{font-size:20px;font-weight:700;color:#e0e0e0;min-width:80px;text-align:right;font-family:Consolas,monospace;}
+.sim-btns{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap;}
+.sim-btns button{background:#1e1e35;border:1px solid #3a3a50;color:#c0c0c0;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;}
+.sim-btns button:hover{background:#2a2a45;}
+
+/* === Panel (right side) === */
+.panel{width:320px;background:#111122;border-left:1px solid #2a2a40;overflow-y:auto;flex-shrink:0;}
+.panel-section{border-bottom:1px solid #1e1e30;padding:12px 14px;}
+.panel-section h3{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#505070;margin-bottom:8px;font-weight:600;}
+.field{display:flex;align-items:center;margin-bottom:6px;gap:6px;}
+.field label{flex:0 0 120px;font-size:11px;color:#909090;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.field input[type=text],.field input[type=number]{flex:1;background:#1a1a2e;border:1px solid #3a3a50;color:#e0e0e0;padding:4px 7px;border-radius:4px;font-size:11px;font-family:Consolas,monospace;min-width:0;}
+.field input:focus{outline:none;border-color:#00aa00;}
+.field input[type=color]{width:28px;height:24px;border:1px solid #3a3a50;border-radius:4px;background:none;padding:0;cursor:pointer;}
+.field .chex{flex:1;background:#1a1a2e;border:1px solid #3a3a50;color:#707070;padding:4px 7px;border-radius:4px;font-size:10px;font-family:Consolas,monospace;}
+.toggle-row{display:flex;align-items:center;margin-bottom:6px;gap:6px;}
+.toggle-row label{flex:1;font-size:11px;color:#909090;}
+.tgl{position:relative;width:34px;height:18px;flex-shrink:0;}
+.tgl input{opacity:0;width:0;height:0;}
+.tgl .sl{position:absolute;top:0;left:0;right:0;bottom:0;background:#2a2a3a;border-radius:9px;cursor:pointer;transition:.2s;}
+.tgl .sl::before{content:'';position:absolute;width:14px;height:14px;left:2px;bottom:2px;background:#707070;border-radius:50%;transition:.2s;}
+.tgl input:checked+.sl{background:#1a5e3a;}
+.tgl input:checked+.sl::before{transform:translateX(16px);background:#00aa00;}
+
+/* Presets */
+.presets{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px;border-bottom:1px solid #1e1e30;}
+.presets button{background:#1a1a2e;border:1px solid #3a3a50;color:#a0a0a0;padding:5px 9px;border-radius:4px;font-size:10px;cursor:pointer;}
+.presets button:hover{border-color:#00aa00;color:#00aa00;}
+
+/* === Code editor overlay === */
+.overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:1000;flex-direction:column;}
+.overlay.show{display:flex;}
+.overlay-bar{background:#111122;border-bottom:1px solid #2a2a40;padding:8px 16px;display:flex;align-items:center;gap:10px;}
+.overlay-bar h2{font-size:14px;color:#e0e0e0;flex:1;}
+.overlay-bar button{background:#1a1a2e;border:1px solid #3a3a50;color:#c0c0c0;padding:5px 14px;border-radius:4px;font-size:12px;cursor:pointer;}
+.overlay-bar button:hover{background:#2a2a45;}
+.overlay-bar button.green{border-color:#00aa00;color:#00aa00;}
+.overlay-bar button.green:hover{background:#0a2a0a;}
+.overlay-bar button.blue{border-color:#4488cc;color:#4488cc;}
+.overlay-bar button.blue:hover{background:#0a1a2a;}
+.overlay-bar button.orange{border-color:#cc8844;color:#cc8844;}
+.code-area{flex:1;padding:0;overflow:hidden;}
+.code-area textarea{width:100%;height:100%;background:#0d0d1a;color:#c8d8c8;border:none;padding:16px;font-family:'Cascadia Code',Consolas,'Courier New',monospace;font-size:13px;line-height:1.5;resize:none;tab-size:2;}
+.code-area textarea:focus{outline:none;}
+
+/* Status toast */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a5e3a;color:#fff;padding:10px 24px;border-radius:6px;font-size:13px;z-index:2000;display:none;box-shadow:0 4px 12px rgba(0,0,0,.5);}
+.toast.err{background:#8a2a2a;}
+.toast.show{display:block;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateX(-50%) translateY(10px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+
+@media(max-width:900px){
+  .main{flex-direction:column;}
+  .panel{width:100%;border-left:none;border-top:1px solid #2a2a40;max-height:45vh;}
+}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <h1>Murphy-Style Gauge Simulator</h1>
+  <span class="tag">Cat 3516</span>
+  <span id="stateBadge" style="background:#00aa00;color:#000;">NORMAL</span>
+  <span class="sep"></span>
+  <button class="primary" onclick="openEditor()">{ } View / Edit Code</button>
+  <button onclick="exportSVG()">Export .SVG</button>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <!-- Gauge + sim -->
+  <div class="gauge-col">
+    <div class="gauge-wrap">
+      <object id="gaugeObj" data="murphy-gauge.svg" type="image/svg+xml" width="100%"></object>
+    </div>
+    <div class="sim-bar">
+      <label>Process Value Simulator</label>
+      <div class="sim-row">
+        <input type="range" id="simSlider" min="0" max="1000" step="0.1" value="250">
+        <span class="sim-val" id="simDisplay">250.0</span>
+      </div>
+      <div class="sim-btns">
+        <button onclick="simMode('up')">Ramp Up</button>
+        <button onclick="simMode('down')">Ramp Down</button>
+        <button onclick="simMode('sine')">Sine Wave</button>
+        <button onclick="simMode('trip')">Trip</button>
+        <button id="simStopBtn" onclick="simMode('stop')" style="display:none">Stop</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Parameter panel -->
+  <div class="panel">
+    <div class="presets">
+      <button onclick="loadPreset('suction')">Suction Press</button>
+      <button onclick="loadPreset('discharge')">Discharge Press</button>
+      <button onclick="loadPreset('jwTemp')">JW Temp</button>
+      <button onclick="loadPreset('oilPress')">Oil Pressure</button>
+      <button onclick="loadPreset('manifold')">Manifold Temp</button>
+      <button onclick="loadPreset('fuelGas')">Fuel Gas</button>
+      <button onclick="loadPreset('throw')">Throw Press</button>
+    </div>
+    <div class="panel-section">
+      <h3>Identity</h3>
+      <div class="field"><label>Label</label><input type="text" id="f_ps_label" value="Stage 1 Suction Pressure" onchange="sf(this)"></div>
+      <div class="field"><label>Unit</label><input type="text" id="f_ps_unit" value="psi(g)" onchange="sf(this)"></div>
+      <div class="field"><label>Precision</label><input type="number" id="f_pn_precision" value="1" min="0" max="4" onchange="sf(this)"></div>
+      <div class="toggle-row"><label>Show Value</label><div class="tgl"><input type="checkbox" id="f_pb_showValue" checked onchange="sf(this)"><span class="sl"></span></div></div>
+      <div class="toggle-row"><label>Show Label</label><div class="tgl"><input type="checkbox" id="f_pb_showLabel" checked onchange="sf(this)"><span class="sl"></span></div></div>
+      <div class="toggle-row"><label>Show Unit</label><div class="tgl"><input type="checkbox" id="f_pb_showUnit" checked onchange="sf(this)"><span class="sl"></span></div></div>
+    </div>
+    <div class="panel-section">
+      <h3>Instrument Range</h3>
+      <div class="field"><label>Full Min</label><input type="number" id="f_pn_fullMin" value="0" onchange="sf(this)"></div>
+      <div class="field"><label>Full Max</label><input type="number" id="f_pn_fullMax" value="1000" onchange="sf(this)"></div>
+    </div>
+    <div class="panel-section">
+      <h3>Alarm / Shutdown</h3>
+      <div class="field"><label style="color:#cc0000">Low Shutdown</label><input type="number" id="f_pn_lowShutdown" value="50" onchange="sf(this)"></div>
+      <div class="field"><label style="color:#cccc00">Low Alarm</label><input type="number" id="f_pn_lowAlarm" value="100" onchange="sf(this)"></div>
+      <div class="field"><label style="color:#cccc00">High Alarm</label><input type="number" id="f_pn_highAlarm" value="400" onchange="sf(this)"></div>
+      <div class="field"><label style="color:#cc0000">High Shutdown</label><input type="number" id="f_pn_highShutdown" value="500" onchange="sf(this)"></div>
+    </div>
+    <div class="panel-section">
+      <h3>Scaling</h3>
+      <div class="toggle-row"><label>Auto Scale</label><div class="tgl"><input type="checkbox" id="f_pb_autoScale" checked onchange="sf(this)"><span class="sl"></span></div></div>
+      <div class="field"><label>Manual Min</label><input type="number" id="f_pn_manualDisplayMin" value="0" onchange="sf(this)"></div>
+      <div class="field"><label>Manual Max</label><input type="number" id="f_pn_manualDisplayMax" value="500" onchange="sf(this)"></div>
+      <div class="field"><label>Padding %</label><input type="number" id="f_pn_scalePaddingPercent" value="10" min="0" max="50" onchange="sf(this)"></div>
+    </div>
+    <div class="panel-section">
+      <h3>Colors</h3>
+      <div class="field"><label>Normal</label><input type="color" id="f_pc_normalColor" value="#00aa00" onchange="sf(this)"><input class="chex" id="f_pc_normalColor_h" value="#00aa00" readonly></div>
+      <div class="field"><label>Alarm</label><input type="color" id="f_pc_alarmColor" value="#cccc00" onchange="sf(this)"><input class="chex" id="f_pc_alarmColor_h" value="#cccc00" readonly></div>
+      <div class="field"><label>Shutdown</label><input type="color" id="f_pc_shutdownColor" value="#cc0000" onchange="sf(this)"><input class="chex" id="f_pc_shutdownColor_h" value="#cc0000" readonly></div>
+      <div class="field"><label>Face</label><input type="color" id="f_pc_faceColor" value="#f0f0f0" onchange="sf(this)"><input class="chex" id="f_pc_faceColor_h" value="#f0f0f0" readonly></div>
+      <div class="field"><label>Pointer</label><input type="color" id="f_pc_pointerColor" value="#111111" onchange="sf(this)"><input class="chex" id="f_pc_pointerColor_h" value="#111111" readonly></div>
+      <div class="field"><label>Ticks</label><input type="color" id="f_pc_tickColor" value="#555555" onchange="sf(this)"><input class="chex" id="f_pc_tickColor_h" value="#555555" readonly></div>
+      <div class="field"><label>Bg Arc</label><input type="color" id="f_pc_bgArcColor" value="#d0d0d0" onchange="sf(this)"><input class="chex" id="f_pc_bgArcColor_h" value="#d0d0d0" readonly></div>
+      <div class="field"><label>Text</label><input type="color" id="f_pc_textColor" value="#111111" onchange="sf(this)"><input class="chex" id="f_pc_textColor_h" value="#111111" readonly></div>
+      <div class="field"><label>Label</label><input type="color" id="f_pc_labelColor" value="#333333" onchange="sf(this)"><input class="chex" id="f_pc_labelColor_h" value="#333333" readonly></div>
+      <div class="field"><label>Border</label><input type="color" id="f_pc_borderColor" value="#888888" onchange="sf(this)"><input class="chex" id="f_pc_borderColor_h" value="#888888" readonly></div>
+    </div>
+    <div class="panel-section">
+      <h3>Writeback</h3>
+      <div class="toggle-row"><label>Enable Writeback</label><div class="tgl"><input type="checkbox" id="f_pb_enableWriteback" onchange="sf(this)"><span class="sl"></span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Code editor overlay -->
+<div class="overlay" id="editorOverlay">
+  <div class="overlay-bar">
+    <h2>murphy-gauge.svg — Source Code</h2>
+    <button onclick="applyCode()" class="green">Apply Changes to Gauge</button>
+    <button onclick="commitCode()" class="blue">Commit to GitHub</button>
+    <button onclick="exportFromEditor()" class="orange">Export .SVG File</button>
+    <button onclick="closeEditor()">Close</button>
+  </div>
+  <div class="code-area">
+    <textarea id="codeEditor" spellcheck="false"></textarea>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  Gauge communication
+// ============================================================
+var gaugeDoc=null, gaugePV=null, currentSVGSource='';
+
+document.getElementById('gaugeObj').addEventListener('load',function(){
+  gaugeDoc=this.contentDocument;
+  gaugePV=gaugeDoc.defaultView.putValue;
+  // Grab original source
+  currentSVGSource=new XMLSerializer().serializeToString(gaugeDoc.documentElement);
+  syncAll();
+});
+
+function pv(id,val){if(gaugePV)gaugePV(id,val);}
+
+// ============================================================
+//  Field sync
+// ============================================================
+function fieldToVar(id){return '_'+id.substring(2);}
+
+function sf(el){
+  var vn=fieldToVar(el.id), val;
+  if(el.type==='checkbox') val=el.checked;
+  else if(el.type==='color'){val=el.value;var h=document.getElementById(el.id+'_h');if(h)h.value=el.value;}
+  else if(el.type==='number') val=parseFloat(el.value);
+  else val=el.value;
+  pv(vn,val);
+  updateSliderRange();
+  updateBadge();
+}
+
+function syncAll(){
+  var fields=document.querySelectorAll('.panel input');
+  for(var i=0;i<fields.length;i++){
+    var el=fields[i];
+    if(el.id&&el.id.startsWith('f_')&&!el.id.endsWith('_h')) sf(el);
+  }
+  sendSlider();
+}
+
+// ============================================================
+//  Slider
+// ============================================================
+var slider=document.getElementById('simSlider'), simDisp=document.getElementById('simDisplay');
+
+function sendSlider(){
+  var v=parseFloat(slider.value);
+  var prec=parseInt(document.getElementById('f_pn_precision').value)||1;
+  simDisp.textContent=v.toFixed(prec);
+  pv('_pn_value',v);
+  updateBadge();
+  // Color the display value
+  var ls=parseFloat(document.getElementById('f_pn_lowShutdown').value);
+  var la=parseFloat(document.getElementById('f_pn_lowAlarm').value);
+  var ha=parseFloat(document.getElementById('f_pn_highAlarm').value);
+  var hs=parseFloat(document.getElementById('f_pn_highShutdown').value);
+  var sc=document.getElementById('f_pc_shutdownColor').value;
+  var ac=document.getElementById('f_pc_alarmColor').value;
+  var nc=document.getElementById('f_pc_normalColor').value;
+  if(v<=ls||v>=hs) simDisp.style.color=sc;
+  else if(v<=la||v>=ha) simDisp.style.color=ac;
+  else simDisp.style.color=nc;
+}
+slider.addEventListener('input',sendSlider);
+
+function updateSliderRange(){
+  var mn=parseFloat(document.getElementById('f_pn_fullMin').value)||0;
+  var mx=parseFloat(document.getElementById('f_pn_fullMax').value)||1000;
+  var pad=(mx-mn)*0.05;
+  slider.min=mn-pad; slider.max=mx+pad; slider.step=(mx-mn)/2000;
+}
+
+function updateBadge(){
+  var v=parseFloat(slider.value);
+  var ls=parseFloat(document.getElementById('f_pn_lowShutdown').value);
+  var la=parseFloat(document.getElementById('f_pn_lowAlarm').value);
+  var ha=parseFloat(document.getElementById('f_pn_highAlarm').value);
+  var hs=parseFloat(document.getElementById('f_pn_highShutdown').value);
+  var b=document.getElementById('stateBadge');
+  if(v<=ls||v>=hs){b.textContent='SHUTDOWN';b.style.background=document.getElementById('f_pc_shutdownColor').value;b.style.color='#fff';}
+  else if(v<=la||v>=ha){b.textContent='ALARM';b.style.background=document.getElementById('f_pc_alarmColor').value;b.style.color='#000';}
+  else{b.textContent='NORMAL';b.style.background=document.getElementById('f_pc_normalColor').value;b.style.color='#000';}
+}
+
+// ============================================================
+//  Sim modes
+// ============================================================
+var simTimer=null;
+function simMode(mode){
+  if(simTimer){clearInterval(simTimer);simTimer=null;}
+  document.getElementById('simStopBtn').style.display=(mode==='stop')?'none':'inline-block';
+  if(mode==='stop')return;
+  var fMin=parseFloat(document.getElementById('f_pn_fullMin').value)||0;
+  var fMax=parseFloat(document.getElementById('f_pn_fullMax').value)||1000;
+  var ls=parseFloat(document.getElementById('f_pn_lowShutdown').value)||fMin;
+  var hs=parseFloat(document.getElementById('f_pn_highShutdown').value)||fMax;
+  var rng=hs-ls, mid=(ls+hs)/2;
+  if(mode==='up'){slider.value=ls-rng*.1;simTimer=setInterval(function(){var v=parseFloat(slider.value)+rng*.003;if(v>hs+rng*.15)v=ls-rng*.1;slider.value=v;sendSlider();},30);}
+  if(mode==='down'){slider.value=hs+rng*.1;simTimer=setInterval(function(){var v=parseFloat(slider.value)-rng*.003;if(v<ls-rng*.15)v=hs+rng*.1;slider.value=v;sendSlider();},30);}
+  if(mode==='sine'){var t=0;simTimer=setInterval(function(){t+=.015;slider.value=mid+rng*.65*Math.sin(t);sendSlider();},30);}
+  if(mode==='trip'){var ph=0,tt=0;slider.value=mid;simTimer=setInterval(function(){tt++;if(ph===0){slider.value=mid+rng*.15*Math.sin(tt*.04)+(Math.random()-.5)*rng*.02;if(tt>120){ph=1;tt=0;}}else if(ph===1){var v=parseFloat(slider.value)+rng*.012;slider.value=v;if(v>=hs+rng*.05){ph=2;tt=0;}}else{if(tt>80){ph=0;tt=0;slider.value=mid;}}sendSlider();},30);}
+}
+
+// ============================================================
+//  Presets
+// ============================================================
+var PRESETS={
+  suction:{_ps_label:'Stage 1 Suction Pressure',_ps_unit:'psi(g)',_pn_precision:1,_pn_fullMin:0,_pn_fullMax:500,_pn_lowShutdown:15,_pn_lowAlarm:25,_pn_highAlarm:90,_pn_highShutdown:100,_pb_autoScale:true,_pn_scalePaddingPercent:15,_pn_manualDisplayMin:0,_pn_manualDisplayMax:150,sv:55},
+  discharge:{_ps_label:'Stage 1 Discharge Pressure',_ps_unit:'psi(g)',_pn_precision:1,_pn_fullMin:0,_pn_fullMax:1500,_pn_lowShutdown:400,_pn_lowAlarm:500,_pn_highAlarm:900,_pn_highShutdown:1000,_pb_autoScale:true,_pn_scalePaddingPercent:10,_pn_manualDisplayMin:0,_pn_manualDisplayMax:1200,sv:720},
+  jwTemp:{_ps_label:'Jacket Water Temperature',_ps_unit:'Deg F',_pn_precision:1,_pn_fullMin:-40,_pn_fullMax:395,_pn_lowShutdown:-40,_pn_lowAlarm:47,_pn_highAlarm:221,_pn_highShutdown:308,_pb_autoScale:true,_pn_scalePaddingPercent:12,_pn_manualDisplayMin:-40,_pn_manualDisplayMax:395,sv:175},
+  oilPress:{_ps_label:'Compressor Oil Pressure',_ps_unit:'psi(g)',_pn_precision:1,_pn_fullMin:0,_pn_fullMax:1500,_pn_lowShutdown:576,_pn_lowAlarm:268,_pn_highAlarm:884,_pn_highShutdown:1192,_pb_autoScale:true,_pn_scalePaddingPercent:12,_pn_manualDisplayMin:0,_pn_manualDisplayMax:1500,sv:58.8},
+  manifold:{_ps_label:'Manifold Temperature',_ps_unit:'Deg F',_pn_precision:0,_pn_fullMin:0,_pn_fullMax:500,_pn_lowShutdown:80,_pn_lowAlarm:100,_pn_highAlarm:350,_pn_highShutdown:400,_pb_autoScale:true,_pn_scalePaddingPercent:10,_pn_manualDisplayMin:0,_pn_manualDisplayMax:450,sv:225},
+  fuelGas:{_ps_label:'Fuel Gas Pressure',_ps_unit:'psi(g)',_pn_precision:1,_pn_fullMin:0,_pn_fullMax:100,_pn_lowShutdown:8,_pn_lowAlarm:12,_pn_highAlarm:55,_pn_highShutdown:65,_pb_autoScale:true,_pn_scalePaddingPercent:15,_pn_manualDisplayMin:0,_pn_manualDisplayMax:80,sv:35},
+  throw:{_ps_label:'Throw 1 Suction Pressure',_ps_unit:'psi(g)',_pn_precision:1,_pn_fullMin:0,_pn_fullMax:2000,_pn_lowShutdown:0,_pn_lowAlarm:0,_pn_highAlarm:2000,_pn_highShutdown:2000,_pb_autoScale:false,_pn_scalePaddingPercent:0,_pn_manualDisplayMin:0,_pn_manualDisplayMax:2000,sv:42.7}
+};
+
+function loadPreset(name){
+  if(simTimer)simMode('stop');
+  var p=PRESETS[name]; if(!p)return;
+  var map={_ps_label:'f_ps_label',_ps_unit:'f_ps_unit',_pn_precision:'f_pn_precision',_pn_fullMin:'f_pn_fullMin',_pn_fullMax:'f_pn_fullMax',_pn_lowShutdown:'f_pn_lowShutdown',_pn_lowAlarm:'f_pn_lowAlarm',_pn_highAlarm:'f_pn_highAlarm',_pn_highShutdown:'f_pn_highShutdown',_pb_autoScale:'f_pb_autoScale',_pn_scalePaddingPercent:'f_pn_scalePaddingPercent',_pn_manualDisplayMin:'f_pn_manualDisplayMin',_pn_manualDisplayMax:'f_pn_manualDisplayMax'};
+  for(var k in map){if(p[k]===undefined)continue;var el=document.getElementById(map[k]);if(!el)continue;if(el.type==='checkbox')el.checked=!!p[k];else el.value=p[k];}
+  updateSliderRange();
+  slider.value=p.sv!==undefined?p.sv:0;
+  syncAll();
+}
+
+// ============================================================
+//  Code editor
+// ============================================================
+function openEditor(){
+  // Get current SVG source from the loaded object
+  if(gaugeDoc){
+    currentSVGSource=new XMLSerializer().serializeToString(gaugeDoc.documentElement);
+  }
+  document.getElementById('codeEditor').value=formatXML(currentSVGSource);
+  document.getElementById('editorOverlay').classList.add('show');
+}
+
+function closeEditor(){
+  document.getElementById('editorOverlay').classList.remove('show');
+}
+
+function applyCode(){
+  var src=document.getElementById('codeEditor').value;
+  try{
+    // Reload gauge with edited source
+    var blob=new Blob([src],{type:'image/svg+xml'});
+    var url=URL.createObjectURL(blob);
+    var obj=document.getElementById('gaugeObj');
+    obj.data=url;
+    obj.addEventListener('load',function handler(){
+      obj.removeEventListener('load',handler);
+      gaugeDoc=obj.contentDocument;
+      gaugePV=gaugeDoc.defaultView.putValue;
+      currentSVGSource=src;
+      syncAll();
+      toast('Changes applied to gauge');
+    });
+  }catch(e){
+    toast('Error applying changes: '+e.message,'err');
+  }
+}
+
+function exportFromEditor(){
+  var src=document.getElementById('codeEditor').value;
+  downloadSVG(src);
+}
+
+function commitCode(){
+  var src=document.getElementById('codeEditor').value;
+  // Use GitHub API to update the file
+  var token=prompt('Enter your GitHub personal access token to commit:');
+  if(!token){toast('Commit cancelled','err');return;}
+  var content=btoa(unescape(encodeURIComponent(src)));
+  // First get the current file SHA
+  fetch('https://api.github.com/repos/ccastille-arch/fuxa-simulator/contents/svg-widgets/murphy-gauge.svg?ref=fuxa-gauges',{
+    headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+  }).then(function(r){return r.json();}).then(function(data){
+    var sha=data.sha||'';
+    return fetch('https://api.github.com/repos/ccastille-arch/fuxa-simulator/contents/svg-widgets/murphy-gauge.svg',{
+      method:'PUT',
+      headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+      body:JSON.stringify({
+        message:'Update murphy-gauge.svg from simulator editor',
+        content:content,
+        sha:sha,
+        branch:'fuxa-gauges'
+      })
+    });
+  }).then(function(r){return r.json();}).then(function(data){
+    if(data.content){toast('Committed to GitHub successfully!');}
+    else{toast('Commit failed: '+(data.message||'unknown error'),'err');}
+  }).catch(function(e){toast('Commit error: '+e.message,'err');});
+}
+
+// ============================================================
+//  Export SVG
+// ============================================================
+function exportSVG(){
+  if(gaugeDoc){
+    currentSVGSource=new XMLSerializer().serializeToString(gaugeDoc.documentElement);
+  }
+  downloadSVG(currentSVGSource);
+}
+
+function downloadSVG(src){
+  var blob=new Blob([src],{type:'image/svg+xml'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='murphy-gauge.svg';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  toast('SVG exported!');
+}
+
+// ============================================================
+//  Toast
+// ============================================================
+function toast(msg,type){
+  var t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='toast show'+(type==='err'?' err':'');
+  setTimeout(function(){t.className='toast';},3000);
+}
+
+// ============================================================
+//  XML formatter (basic indent)
+// ============================================================
+function formatXML(xml){
+  // Simple pass-through — don't reformat to avoid breaking CDATA
+  return xml;
+}
+
+// Init
+updateSliderRange();
+</script>
+</body>
+</html>

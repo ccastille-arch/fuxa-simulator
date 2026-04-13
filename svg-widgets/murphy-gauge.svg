@@ -1,0 +1,498 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+<style>
+  @keyframes sdPulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+  .sd-pulse { animation: sdPulse 2.5s ease-in-out infinite; }
+</style>
+
+<!-- Gauge face (white instrument panel) -->
+<rect id="gaugeFace" x="4" y="4" width="292" height="292" rx="8" ry="8"
+      fill="#f0f0f0" stroke="#888888" stroke-width="1.5"/>
+<!-- Inner shadow ring -->
+<circle cx="150" cy="140" r="126" fill="none" stroke="#d8d8d8" stroke-width="1"/>
+
+<!-- Background arc -->
+<path id="bgArc" fill="none" stroke="#d0d0d0" stroke-width="18" stroke-linecap="butt"
+      d="M 44.55 216.98 A 120 120 0 1 1 255.45 216.98"/>
+
+<!-- Zone arcs — pre-baked defaults (0-1000, SD 50/500, AL 100/400) -->
+<path id="zoneLowSD"  fill="none" stroke="#cc0000" stroke-width="16" stroke-linecap="butt" d=""/>
+<path id="zoneLowAlm" fill="none" stroke="#cccc00" stroke-width="16" stroke-linecap="butt" d=""/>
+<path id="zoneNormal" fill="none" stroke="#00aa00" stroke-width="16" stroke-linecap="butt" d=""/>
+<path id="zoneHighAlm" fill="none" stroke="#cccc00" stroke-width="16" stroke-linecap="butt" d=""/>
+<path id="zoneHighSD" fill="none" stroke="#cc0000" stroke-width="16" stroke-linecap="butt" d=""/>
+
+<!-- Tick marks + labels (dynamic) -->
+<g id="tickGroup"></g>
+<g id="tickLabelGroup"></g>
+
+<!-- Limit markers -->
+<g id="markerGroup">
+  <polygon id="markerLowSD" fill="#cc0000" points=""/>
+  <polygon id="markerLowAlm" fill="#cccc00" points=""/>
+  <polygon id="markerHighAlm" fill="#cccc00" points=""/>
+  <polygon id="markerHighSD" fill="#cc0000" points=""/>
+</g>
+
+<!-- Pointer needle (black, thin, classic) -->
+<polygon id="pointer" fill="#111111" stroke="#000000" stroke-width="0.5" points="150,140 150,20"/>
+<!-- Hub -->
+<circle id="pointerHubOuter" cx="150" cy="140" r="10" fill="#333333"/>
+<circle id="pointerHub" cx="150" cy="140" r="6" fill="#555555"/>
+
+<!-- Value display -->
+<text id="valueText" x="150" y="222" text-anchor="middle"
+      font-family="Arial,Helvetica,sans-serif" font-size="38" font-weight="bold"
+      fill="#111111">0.0</text>
+<!-- Unit (subscript style next to value) -->
+<text id="unitText" x="150" y="243" text-anchor="middle"
+      font-family="Arial,Helvetica,sans-serif" font-size="14" fill="#444444">psi(g)</text>
+
+<!-- Label below gauge -->
+<text id="labelText" x="150" y="275" text-anchor="middle"
+      font-family="Arial,Helvetica,sans-serif" font-size="13" fill="#333333">Stage 1 Suction Pressure</text>
+
+<script>
+//<![CDATA[
+
+// ============================================================
+//  FUXA Exported Variables
+// ============================================================
+//!export-start
+
+var _ps_label           = "Stage 1 Suction Pressure";
+var _ps_unit            = "psi(g)";
+var _pn_precision       = 1;
+var _pb_showValue       = true;
+var _pb_showLabel       = true;
+var _pb_showUnit        = true;
+var _pb_showMinMaxText  = true;
+
+var _pn_value           = 0;
+
+var _pn_fullMin         = 0;
+var _pn_fullMax         = 1000;
+
+var _pn_lowShutdown     = 50;
+var _pn_lowAlarm        = 100;
+var _pn_highAlarm       = 400;
+var _pn_highShutdown    = 500;
+
+var _pb_autoScale           = true;
+var _pn_manualDisplayMin    = 0;
+var _pn_manualDisplayMax    = 500;
+var _pn_scalePaddingPercent = 10;
+
+var _pc_bgArcColor    = "#d0d0d0";
+var _pc_normalColor   = "#00aa00";
+var _pc_alarmColor    = "#cccc00";
+var _pc_shutdownColor = "#cc0000";
+var _pc_pointerColor  = "#111111";
+var _pc_textColor     = "#111111";
+var _pc_labelColor    = "#333333";
+var _pc_tickColor     = "#555555";
+var _pc_faceColor     = "#f0f0f0";
+var _pc_borderColor   = "#888888";
+
+var _pb_enableWriteback = false;
+
+//!export-end
+
+// ============================================================
+//  Constants — 270° sweep gauge
+// ============================================================
+var SVG_NS     = "http://www.w3.org/2000/svg";
+var CX         = 150;
+var CY         = 140;
+var R          = 120;     // arc centre radius
+var ZONE_W     = 16;
+var BG_W       = 18;
+// 270° sweep: from 225° (lower-left, 7 o'clock) to -45° (lower-right, 5 o'clock)
+// In math convention: startAngle=225, endAngle=-45
+// Sweep goes CW visually: 225 → 180 → 90 → 0 → -45
+var START_DEG  = 225;     // gauge 0% (min value)
+var END_DEG    = -45;     // gauge 100% (max value)
+var SWEEP_DEG  = 270;     // total sweep
+var NEEDLE_TIP = 112;
+var NEEDLE_BASE= 12;
+var NEEDLE_HALF= 3.5;
+var TICK_R1    = R + BG_W/2 + 1;   // just outside arc
+var TICK_R2_MAJ= TICK_R1 + 10;
+var TICK_R2_MIN= TICK_R1 + 5;
+var LABEL_R    = TICK_R2_MAJ + 12;
+var MKR_TIP_R  = TICK_R1;
+var MKR_BASE_R = TICK_R2_MAJ;
+var MKR_HALF   = 1.2;
+
+var _initDone  = false;
+var _dragging  = false;
+var _prevValue = null;
+
+// ============================================================
+//  Helpers
+// ============================================================
+function safeNum(v, fb) {
+  if (v === null || v === undefined || v === "") return fb;
+  var n = Number(v); return isNaN(n) ? fb : n;
+}
+function safeBool(v, fb) {
+  if (v===true||v==="true"||v===1||v==="1") return true;
+  if (v===false||v==="false"||v===0||v==="0") return false;
+  return fb;
+}
+function clamp(v,lo,hi) { return Math.max(lo,Math.min(hi,v)); }
+
+function polarToCartesian(cx, cy, r, deg) {
+  var rad = deg * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) };
+}
+
+function describeArc(cx, cy, r, sa, ea) {
+  // sa > ea when sweeping CW through top. Handles 270° sweep.
+  var diff = sa - ea;
+  if (diff < 0) diff += 360;
+  if (diff < 0.15) return "";
+  var s = polarToCartesian(cx, cy, r, sa);
+  var e = polarToCartesian(cx, cy, r, ea);
+  var lg = diff > 180 ? 1 : 0;
+  return "M "+s.x.toFixed(2)+" "+s.y.toFixed(2)+
+         " A "+r+" "+r+" 0 "+lg+" 1 "+e.x.toFixed(2)+" "+e.y.toFixed(2);
+}
+
+function valueToAngle(val, dMin, dMax) {
+  if (dMax === dMin) return START_DEG;
+  var frac = (val - dMin) / (dMax - dMin);
+  return START_DEG - frac * SWEEP_DEG;
+}
+function angleToValue(ang, dMin, dMax) {
+  var frac = (START_DEG - ang) / SWEEP_DEG;
+  return dMin + frac * (dMax - dMin);
+}
+
+// ============================================================
+//  Display range (same auto-scale logic)
+// ============================================================
+function computeDisplayRange() {
+  var fMin = safeNum(_pn_fullMin, 0);
+  var fMax = safeNum(_pn_fullMax, 100);
+  if (fMax <= fMin) fMax = fMin + 100;
+
+  if (_pb_autoScale) {
+    var ls = safeNum(_pn_lowShutdown, NaN), la = safeNum(_pn_lowAlarm, NaN);
+    var ha = safeNum(_pn_highAlarm, NaN),   hs = safeNum(_pn_highShutdown, NaN);
+    if (isFinite(ls)&&isFinite(la)&&isFinite(ha)&&isFinite(hs)
+        && ls < la && la < ha && ha < hs) {
+      var span = hs - ls; if (span <= 0) span = 1;
+      var pad = span * safeNum(_pn_scalePaddingPercent, 10) / 100;
+      var dMin = Math.max(ls - pad/2, fMin);
+      var dMax = Math.min(hs + pad/2, fMax);
+      if (dMax <= dMin) dMax = dMin + 1;
+      return {min:dMin, max:dMax};
+    }
+  }
+  var mMin = safeNum(_pn_manualDisplayMin, NaN);
+  var mMax = safeNum(_pn_manualDisplayMax, NaN);
+  if (isFinite(mMin)&&isFinite(mMax)&&mMax>mMin) return {min:mMin, max:mMax};
+  return {min:fMin, max:fMax};
+}
+
+// ============================================================
+//  State colour
+// ============================================================
+function computeStateColor(val) {
+  var v = safeNum(val,0);
+  var ls = safeNum(_pn_lowShutdown,-Infinity), la = safeNum(_pn_lowAlarm,-Infinity);
+  var ha = safeNum(_pn_highAlarm,Infinity),    hs = safeNum(_pn_highShutdown,Infinity);
+  if (v<=ls||v>=hs) return _pc_shutdownColor;
+  if (v<=la||v>=ha) return _pc_alarmColor;
+  return _pc_normalColor;
+}
+function isShutdownState(val) {
+  var v=safeNum(val,0), ls=safeNum(_pn_lowShutdown,-Infinity), hs=safeNum(_pn_highShutdown,Infinity);
+  return (v<=ls||v>=hs);
+}
+
+// ============================================================
+//  Zone arcs
+// ============================================================
+function setZonePath(id, v0, v1, color, dMin, dMax) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (!isFinite(v0)||!isFinite(v1)||v0>=v1) { el.setAttribute("d",""); return; }
+  var s = clamp(v0,dMin,dMax), e = clamp(v1,dMin,dMax);
+  if (s>=e) { el.setAttribute("d",""); return; }
+  el.setAttribute("d", describeArc(CX,CY,R, valueToAngle(s,dMin,dMax), valueToAngle(e,dMin,dMax)));
+  el.setAttribute("stroke", color);
+}
+
+// ============================================================
+//  Ticks — Murphy style with scale labels
+// ============================================================
+function niceStep(range) {
+  var rough = range / 6;
+  var mag = Math.pow(10, Math.floor(Math.log10(rough)));
+  var norm = rough / mag;
+  if (norm <= 1) return mag;
+  if (norm <= 2) return 2 * mag;
+  if (norm <= 5) return 5 * mag;
+  return 10 * mag;
+}
+
+function drawTicks(dMin, dMax) {
+  var tg = document.getElementById("tickGroup");
+  var lg = document.getElementById("tickLabelGroup");
+  if (!tg||!lg) return;
+  while (tg.firstChild) tg.removeChild(tg.firstChild);
+  while (lg.firstChild) lg.removeChild(lg.firstChild);
+
+  var range = dMax - dMin;
+  var step = niceStep(range);
+  var first = Math.ceil(dMin / step) * step;
+  var minorStep = step / 2;
+  var minFirst = Math.ceil(dMin / minorStep) * minorStep;
+
+  // Minor ticks
+  for (var v = minFirst; v <= dMax + 0.001; v += minorStep) {
+    var isMajor = Math.abs(v - Math.round(v/step)*step) < step*0.01;
+    if (isMajor) continue;
+    var ang = valueToAngle(v, dMin, dMax);
+    var p1 = polarToCartesian(CX,CY,TICK_R1,ang);
+    var p2 = polarToCartesian(CX,CY,TICK_R2_MIN,ang);
+    var ln = document.createElementNS(SVG_NS,"line");
+    ln.setAttribute("x1",p1.x.toFixed(1)); ln.setAttribute("y1",p1.y.toFixed(1));
+    ln.setAttribute("x2",p2.x.toFixed(1)); ln.setAttribute("y2",p2.y.toFixed(1));
+    ln.setAttribute("stroke",_pc_tickColor); ln.setAttribute("stroke-width","1");
+    tg.appendChild(ln);
+  }
+
+  // Major ticks + labels
+  for (var v = first; v <= dMax + 0.001; v += step) {
+    var ang = valueToAngle(v, dMin, dMax);
+    var p1 = polarToCartesian(CX,CY,TICK_R1,ang);
+    var p2 = polarToCartesian(CX,CY,TICK_R2_MAJ,ang);
+    var ln = document.createElementNS(SVG_NS,"line");
+    ln.setAttribute("x1",p1.x.toFixed(1)); ln.setAttribute("y1",p1.y.toFixed(1));
+    ln.setAttribute("x2",p2.x.toFixed(1)); ln.setAttribute("y2",p2.y.toFixed(1));
+    ln.setAttribute("stroke",_pc_tickColor); ln.setAttribute("stroke-width","2");
+    tg.appendChild(ln);
+
+    // Label
+    var pL = polarToCartesian(CX,CY,LABEL_R,ang);
+    var txt = document.createElementNS(SVG_NS,"text");
+    txt.setAttribute("x",pL.x.toFixed(1)); txt.setAttribute("y",(pL.y+4).toFixed(1));
+    txt.setAttribute("text-anchor","middle");
+    txt.setAttribute("font-family","Arial,Helvetica,sans-serif");
+    txt.setAttribute("font-size","10");
+    txt.setAttribute("fill",_pc_tickColor);
+    var labelVal = Math.round(v * 100) / 100;
+    txt.textContent = (labelVal === Math.floor(labelVal)) ? labelVal.toFixed(0) : labelVal.toString();
+    lg.appendChild(txt);
+  }
+
+  // Always draw min and max ticks if not already hit
+  drawEndTick(tg, lg, dMin, dMin, dMax);
+  drawEndTick(tg, lg, dMax, dMin, dMax);
+}
+
+function drawEndTick(tg, lg, v, dMin, dMax) {
+  var ang = valueToAngle(v, dMin, dMax);
+  var p1 = polarToCartesian(CX,CY,TICK_R1,ang);
+  var p2 = polarToCartesian(CX,CY,TICK_R2_MAJ,ang);
+  var ln = document.createElementNS(SVG_NS,"line");
+  ln.setAttribute("x1",p1.x.toFixed(1)); ln.setAttribute("y1",p1.y.toFixed(1));
+  ln.setAttribute("x2",p2.x.toFixed(1)); ln.setAttribute("y2",p2.y.toFixed(1));
+  ln.setAttribute("stroke",_pc_tickColor); ln.setAttribute("stroke-width","2");
+  tg.appendChild(ln);
+  var pL = polarToCartesian(CX,CY,LABEL_R,ang);
+  var txt = document.createElementNS(SVG_NS,"text");
+  txt.setAttribute("x",pL.x.toFixed(1)); txt.setAttribute("y",(pL.y+4).toFixed(1));
+  txt.setAttribute("text-anchor","middle");
+  txt.setAttribute("font-family","Arial,Helvetica,sans-serif");
+  txt.setAttribute("font-size","10"); txt.setAttribute("fill",_pc_tickColor);
+  var lv = Math.round(v*100)/100;
+  txt.textContent = (lv===Math.floor(lv)) ? lv.toFixed(0) : lv.toString();
+  lg.appendChild(txt);
+}
+
+// ============================================================
+//  Limit markers
+// ============================================================
+function markerPoints(ang) {
+  var tip = polarToCartesian(CX,CY,MKR_TIP_R,ang);
+  var b1 = polarToCartesian(CX,CY,MKR_BASE_R,ang+MKR_HALF);
+  var b2 = polarToCartesian(CX,CY,MKR_BASE_R,ang-MKR_HALF);
+  return tip.x.toFixed(1)+","+tip.y.toFixed(1)+" "+
+         b1.x.toFixed(1)+","+b1.y.toFixed(1)+" "+
+         b2.x.toFixed(1)+","+b2.y.toFixed(1);
+}
+function updateMarkers(dMin, dMax) {
+  var defs = [
+    {id:"markerLowSD",v:_pn_lowShutdown,c:_pc_shutdownColor},
+    {id:"markerLowAlm",v:_pn_lowAlarm,c:_pc_alarmColor},
+    {id:"markerHighAlm",v:_pn_highAlarm,c:_pc_alarmColor},
+    {id:"markerHighSD",v:_pn_highShutdown,c:_pc_shutdownColor}
+  ];
+  for (var i=0;i<defs.length;i++) {
+    var d=defs[i], el=document.getElementById(d.id);
+    if(!el) continue;
+    var v=safeNum(d.v,NaN);
+    if(!isFinite(v)||v<=dMin||v>=dMax){el.setAttribute("points","");continue;}
+    el.setAttribute("points",markerPoints(valueToAngle(v,dMin,dMax)));
+    el.setAttribute("fill",d.c);
+  }
+}
+
+// ============================================================
+//  Pointer (tapered triangle — thin black needle)
+// ============================================================
+function pointerPoints(angle) {
+  var tip = polarToCartesian(CX,CY,NEEDLE_TIP,angle);
+  var bc = polarToCartesian(CX,CY,NEEDLE_BASE,angle);
+  var pRad = (angle+90)*Math.PI/180;
+  var dx = NEEDLE_HALF*Math.cos(pRad), dy = -NEEDLE_HALF*Math.sin(pRad);
+  return (bc.x+dx).toFixed(1)+","+(bc.y+dy).toFixed(1)+" "+
+         tip.x.toFixed(1)+","+tip.y.toFixed(1)+" "+
+         (bc.x-dx).toFixed(1)+","+(bc.y-dy).toFixed(1);
+}
+
+// ============================================================
+//  Main update
+// ============================================================
+function updateGauge() {
+  var range=computeDisplayRange(), dMin=range.min, dMax=range.max;
+  var val=safeNum(_pn_value,0);
+  var prec=Math.max(0,Math.round(safeNum(_pn_precision,1)));
+
+  // Face
+  var face=document.getElementById("gaugeFace");
+  if(face){face.setAttribute("fill",_pc_faceColor);face.setAttribute("stroke",_pc_borderColor);}
+
+  // Arcs
+  var fullArc=describeArc(CX,CY,R,START_DEG,END_DEG);
+  var bg=document.getElementById("bgArc");
+  if(bg){bg.setAttribute("d",fullArc);bg.setAttribute("stroke",_pc_bgArcColor);}
+
+  // Zones
+  var ls=safeNum(_pn_lowShutdown,dMin),la=safeNum(_pn_lowAlarm,dMin);
+  var ha=safeNum(_pn_highAlarm,dMax),hs=safeNum(_pn_highShutdown,dMax);
+  setZonePath("zoneLowSD",dMin,ls,_pc_shutdownColor,dMin,dMax);
+  setZonePath("zoneLowAlm",ls,la,_pc_alarmColor,dMin,dMax);
+  setZonePath("zoneNormal",la,ha,_pc_normalColor,dMin,dMax);
+  setZonePath("zoneHighAlm",ha,hs,_pc_alarmColor,dMin,dMax);
+  setZonePath("zoneHighSD",hs,dMax,_pc_shutdownColor,dMin,dMax);
+
+  // Ticks & markers
+  drawTicks(dMin,dMax);
+  updateMarkers(dMin,dMax);
+
+  // Pointer
+  var clamped=clamp(val,dMin,dMax);
+  var angle=valueToAngle(clamped,dMin,dMax);
+  var stClr=computeStateColor(val);
+  var ptr=document.getElementById("pointer");
+  if(ptr){ptr.setAttribute("points",pointerPoints(angle));ptr.setAttribute("fill",_pc_pointerColor);}
+
+  // Value
+  var vtx=document.getElementById("valueText");
+  if(vtx){
+    vtx.textContent=_pb_showValue?val.toFixed(prec):"";
+    vtx.setAttribute("fill",_pc_textColor);
+    if(isShutdownState(val)){vtx.setAttribute("class","sd-pulse");}
+    else{vtx.removeAttribute("class");}
+  }
+
+  // Unit
+  var utx=document.getElementById("unitText");
+  if(utx){utx.textContent=_pb_showUnit?_ps_unit:"";utx.setAttribute("fill",_pc_labelColor);}
+
+  // Label
+  var lbl=document.getElementById("labelText");
+  if(lbl){lbl.textContent=_pb_showLabel?_ps_label:"";lbl.setAttribute("fill",_pc_labelColor);}
+}
+
+// ============================================================
+//  putValue — FUXA callback
+// ============================================================
+function putValue(id, value) {
+  switch(id) {
+    case "_ps_label":_ps_label=String(value||"");break;
+    case "_ps_unit":_ps_unit=String(value||"");break;
+    case "_pn_value":_pn_value=safeNum(value,_pn_value);break;
+    case "_pn_precision":_pn_precision=safeNum(value,_pn_precision);break;
+    case "_pn_fullMin":_pn_fullMin=safeNum(value,_pn_fullMin);break;
+    case "_pn_fullMax":_pn_fullMax=safeNum(value,_pn_fullMax);break;
+    case "_pn_lowShutdown":_pn_lowShutdown=safeNum(value,_pn_lowShutdown);break;
+    case "_pn_lowAlarm":_pn_lowAlarm=safeNum(value,_pn_lowAlarm);break;
+    case "_pn_highAlarm":_pn_highAlarm=safeNum(value,_pn_highAlarm);break;
+    case "_pn_highShutdown":_pn_highShutdown=safeNum(value,_pn_highShutdown);break;
+    case "_pn_manualDisplayMin":_pn_manualDisplayMin=safeNum(value,_pn_manualDisplayMin);break;
+    case "_pn_manualDisplayMax":_pn_manualDisplayMax=safeNum(value,_pn_manualDisplayMax);break;
+    case "_pn_scalePaddingPercent":_pn_scalePaddingPercent=safeNum(value,_pn_scalePaddingPercent);break;
+    case "_pb_showValue":_pb_showValue=safeBool(value,_pb_showValue);break;
+    case "_pb_showLabel":_pb_showLabel=safeBool(value,_pb_showLabel);break;
+    case "_pb_showUnit":_pb_showUnit=safeBool(value,_pb_showUnit);break;
+    case "_pb_showMinMaxText":_pb_showMinMaxText=safeBool(value,_pb_showMinMaxText);break;
+    case "_pb_autoScale":_pb_autoScale=safeBool(value,_pb_autoScale);break;
+    case "_pb_enableWriteback":_pb_enableWriteback=safeBool(value,_pb_enableWriteback);break;
+    case "_pc_bgArcColor":_pc_bgArcColor=String(value||_pc_bgArcColor);break;
+    case "_pc_normalColor":_pc_normalColor=String(value||_pc_normalColor);break;
+    case "_pc_alarmColor":_pc_alarmColor=String(value||_pc_alarmColor);break;
+    case "_pc_shutdownColor":_pc_shutdownColor=String(value||_pc_shutdownColor);break;
+    case "_pc_pointerColor":_pc_pointerColor=String(value||_pc_pointerColor);break;
+    case "_pc_textColor":_pc_textColor=String(value||_pc_textColor);break;
+    case "_pc_labelColor":_pc_labelColor=String(value||_pc_labelColor);break;
+    case "_pc_tickColor":_pc_tickColor=String(value||_pc_tickColor);break;
+    case "_pc_faceColor":_pc_faceColor=String(value||_pc_faceColor);break;
+    case "_pc_borderColor":_pc_borderColor=String(value||_pc_borderColor);break;
+  }
+  updateGauge();
+}
+
+// ============================================================
+//  Writeback
+// ============================================================
+function setupWriteback() {
+  var svg=document.querySelector("svg");
+  if(!svg) return;
+  function svgPt(e){var p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse());}
+  function beginDrag(e){
+    if(!_pb_enableWriteback)return;
+    var pt=svgPt(e),dx=pt.x-CX,dy=CY-pt.y,dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<20||dist>160)return;
+    _dragging=true;applyDrag(e);
+  }
+  function moveDrag(e){if(_dragging)applyDrag(e);}
+  function endDrag(){_dragging=false;}
+  function applyDrag(e){
+    var pt=svgPt(e),dx=pt.x-CX,dy=CY-pt.y;
+    var ang=Math.atan2(dy,dx)*180/Math.PI;
+    // Clamp to gauge range: 225 down to -45
+    if(ang>225) ang=225;
+    if(ang<-45) ang=-45;
+    // Handle the dead zone at bottom (between -45 and -135 effectively)
+    if(ang<-45) ang=-45;
+    var range=computeDisplayRange();
+    var nv=clamp(angleToValue(ang,range.min,range.max),range.min,range.max);
+    var prec=Math.max(0,Math.round(safeNum(_pn_precision,1)));
+    _pn_value=parseFloat(nv.toFixed(prec));
+    updateGauge();
+    if(typeof postValue==="function")postValue("_pn_value",_pn_value);
+  }
+  svg.addEventListener("mousedown",beginDrag);
+  svg.addEventListener("mousemove",moveDrag);
+  svg.addEventListener("mouseup",endDrag);
+  svg.addEventListener("mouseleave",endDrag);
+  svg.addEventListener("touchstart",function(e){beginDrag(e.touches[0]);if(_dragging)e.preventDefault();},{passive:false});
+  svg.addEventListener("touchmove",function(e){if(!_dragging)return;moveDrag(e.touches[0]);e.preventDefault();},{passive:false});
+  svg.addEventListener("touchend",endDrag);
+  svg.addEventListener("touchcancel",endDrag);
+}
+
+function init(){
+  if(!_initDone){setupWriteback();_initDone=true;}
+  updateGauge();
+}
+init();
+
+//]]>
+</script>
+</svg>
