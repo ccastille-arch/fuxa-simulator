@@ -1,0 +1,11 @@
+{
+  "name": "3516-altronic-simulator",
+  "version": "1.0.0",
+  "description": "Cat 3516 Altronic DE-4000 FUXA Compressor Panel Simulator",
+  "scripts": {
+    "start": "npx serve -s . -l ${PORT:-3000}"
+  },
+  "dependencies": {
+    "serve": "^14.2.0"
+  }
+}
