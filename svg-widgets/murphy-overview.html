@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Process Overview — Murphy Style</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:14px;overflow:hidden;height:100vh;display:flex;flex-direction:column;}
+
+/* === Header === */
+.header{background:#006600;color:#fff;display:flex;align-items:center;padding:4px 12px;font-size:13px;font-weight:bold;border-bottom:2px solid #004400;flex-shrink:0;height:28px;}
+.header .left{flex:1;text-align:left;}
+.header .center{flex:2;text-align:center;font-size:14px;}
+.header .right{flex:1;text-align:right;}
+
+/* === Status banner === */
+.status-banner{background:#000;text-align:center;padding:4px 0;font-size:13px;font-weight:bold;flex-shrink:0;border-bottom:1px solid #333;}
+.status-banner .state{color:#00cc00;}
+.status-banner .action{color:#00cc00;font-size:12px;}
+
+/* === Info icon === */
+.info-icon{position:absolute;top:38px;right:16px;width:28px;height:28px;border-radius:50%;border:2px solid #0044cc;color:#0044cc;font-size:18px;font-weight:bold;text-align:center;line-height:26px;cursor:pointer;z-index:10;}
+
+/* === Gauge grid === */
+.gauge-area{flex:1;display:flex;flex-direction:column;padding:6px 8px;gap:4px;position:relative;overflow:hidden;}
+.gauge-row{display:flex;flex:1;gap:4px;}
+.gauge-cell{flex:1;position:relative;min-width:0;}
+.gauge-cell object{width:100%;height:100%;display:block;}
+
+/* === Data table (page 3) === */
+.data-table{display:none;flex:1;padding:12px 20px;overflow-y:auto;}
+.data-table table{width:100%;border-collapse:collapse;}
+.data-table td{padding:6px 12px;border-bottom:1px solid #333;font-size:14px;}
+.data-table td:first-child{color:#ccc;width:55%;}
+.data-table td:nth-child(2){color:#fff;font-weight:bold;text-align:right;font-size:16px;font-family:Consolas,monospace;}
+.data-table td:nth-child(3){color:#888;font-size:12px;padding-left:4px;width:60px;}
+
+/* === Nav bar === */
+.navbar{display:flex;flex-shrink:0;border-top:2px solid #333;height:44px;}
+.navbar button{flex:1;border:none;font-size:13px;font-weight:bold;cursor:pointer;font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:0.5px;}
+.nav-menu{background:#555;color:#fff;}
+.nav-menu:hover{background:#666;}
+.nav-config{background:#006600;color:#fff;}
+.nav-config:hover{background:#007700;}
+.nav-stop{background:#cc0000;color:#fff;}
+.nav-stop:hover{background:#dd0000;}
+.nav-prev,.nav-next{background:#ddd;color:#000;}
+.nav-prev:hover,.nav-next:hover{background:#eee;}
+.nav-ctrl{background:#0044cc;color:#fff;}
+.nav-ctrl:hover{background:#0055dd;}
+
+/* === Sim controls overlay === */
+.sim-toggle{position:fixed;bottom:52px;right:8px;background:#1a1a2e;border:1px solid #3a3a50;color:#aaa;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;z-index:20;}
+.sim-toggle:hover{border-color:#00aa00;color:#00aa00;}
+.sim-panel{display:none;position:fixed;bottom:52px;right:8px;background:#111122;border:1px solid #2a2a40;border-radius:8px;padding:14px;width:320px;z-index:20;box-shadow:0 4px 20px rgba(0,0,0,.6);}
+.sim-panel.show{display:block;}
+.sim-panel h4{font-size:11px;color:#606070;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.sim-panel label{font-size:11px;color:#909090;display:block;margin-bottom:3px;}
+.sim-panel input[type=range]{width:100%;accent-color:#00aa00;}
+.sim-panel .sv{font-family:Consolas,monospace;font-size:16px;font-weight:bold;color:#e0e0e0;text-align:center;margin:4px 0 8px;}
+.sim-panel .btns{display:flex;gap:4px;flex-wrap:wrap;}
+.sim-panel .btns button{background:#1e1e35;border:1px solid #3a3a50;color:#c0c0c0;padding:4px 8px;border-radius:3px;font-size:10px;cursor:pointer;}
+.sim-panel .btns button:hover{background:#2a2a45;}
+.sim-close{position:absolute;top:6px;right:10px;background:none;border:none;color:#666;font-size:16px;cursor:pointer;}
+
+/* === Editor overlay === */
+.overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.9);z-index:100;flex-direction:column;}
+.overlay.show{display:flex;}
+.overlay-bar{background:#111122;border-bottom:1px solid #2a2a40;padding:8px 16px;display:flex;align-items:center;gap:10px;}
+.overlay-bar h2{font-size:14px;color:#e0e0e0;flex:1;}
+.overlay-bar button{background:#1a1a2e;border:1px solid #3a3a50;color:#c0c0c0;padding:5px 14px;border-radius:4px;font-size:12px;cursor:pointer;}
+.overlay-bar button:hover{background:#2a2a45;}
+.overlay-bar .green{border-color:#00aa00;color:#00aa00;}
+.overlay-bar .orange{border-color:#cc8844;color:#cc8844;}
+.code-area{flex:1;overflow:hidden;}
+.code-area textarea{width:100%;height:100%;background:#0d0d1a;color:#c8d8c8;border:none;padding:16px;font-family:'Cascadia Code',Consolas,monospace;font-size:13px;line-height:1.5;resize:none;tab-size:2;}
+.code-area textarea:focus{outline:none;}
+
+.toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:#1a5e3a;color:#fff;padding:8px 20px;border-radius:6px;font-size:13px;z-index:200;display:none;}
+.toast.show{display:block;}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="left">Speed: <span id="hdrSpeed">0</span> RPM</div>
+  <div class="center" id="hdrTitle">Process Overview #1 of 4</div>
+  <div class="right" id="hdrTime"></div>
+</div>
+
+<!-- Status -->
+<div class="status-banner">
+  <div class="state" id="bannerState">UNIT READY TO START</div>
+  <div class="action" id="bannerAction">PRESS AND HOLD LOCAL START TOUCHBUTTON FOR 2 SECONDS</div>
+</div>
+
+<!-- Info icon -->
+<div class="info-icon" title="Toggle simulator controls" onclick="toggleSim()">i</div>
+
+<!-- Gauge grid (pages 1,2,4) -->
+<div class="gauge-area" id="gaugeArea">
+  <div class="gauge-row">
+    <div class="gauge-cell"><object id="g0" data="murphy-gauge.svg" type="image/svg+xml"></object></div>
+    <div class="gauge-cell"><object id="g1" data="murphy-gauge.svg" type="image/svg+xml"></object></div>
+    <div class="gauge-cell"><object id="g2" data="murphy-gauge.svg" type="image/svg+xml"></object></div>
+    <div class="gauge-cell"><object id="g3" data="murphy-gauge.svg" type="image/svg+xml"></object></div>
+  </div>
+  <div class="gauge-row">
+    <div class="gauge-cell"><object id="g4" data="murphy-gauge.svg" type="image/svg+xml"></object></div>
+    <div class="gauge-cell"><object id="g5" data="murphy-gauge.svg" type="image/svg+xml"></object></div>
+    <div class="gauge-cell"><object id="g6" data="murphy-gauge.svg" type="image/svg+xml"></object></div>
+    <div class="gauge-cell"><object id="g7" data="murphy-gauge.svg" type="image/svg+xml"></object></div>
+  </div>
+</div>
+
+<!-- Data table (page 3) -->
+<div class="data-table" id="dataTable">
+  <table>
+    <tr><td>Field Pressure</td><td id="dt_fieldPress">-1.6</td><td>psi(g)</td></tr>
+    <tr><td>Dump Supply Pressure</td><td id="dt_dumpPress">26.0</td><td>psi(g)</td></tr>
+    <tr><td>Cooler Outlet Temperature</td><td id="dt_coolerTemp">35.9</td><td>Deg F</td></tr>
+    <tr><td colspan="3" style="height:20px;border:none;"></td></tr>
+    <tr><td>Calculated Inlet Witches Hat Differential Pressure:</td><td id="dt_whd1">-38.2</td><td>psi(g)</td></tr>
+    <tr><td>Calculated 2nd Stage Witches Hat Differential Pressure:</td><td id="dt_whd2">-121.3</td><td>psi(g)</td></tr>
+    <tr><td>Calculated 3rd Stage Witches Hat Differential Pressure:</td><td id="dt_whd3">-142.9</td><td>psi(g)</td></tr>
+  </table>
+</div>
+
+<!-- Nav bar -->
+<div class="navbar">
+  <button class="nav-menu" onclick="openEditor()">MENU</button>
+  <button class="nav-config" onclick="openEditor()">SCREEN<br>CONFIG</button>
+  <button class="nav-stop">LOCAL<br>STOP</button>
+  <button class="nav-prev" onclick="navPage(-1)">PREVIOUS</button>
+  <button class="nav-next" onclick="navPage(1)">NEXT</button>
+  <button class="nav-ctrl" onclick="exportSVG()">CTRL</button>
+</div>
+
+<!-- Sim controls panel -->
+<button class="sim-toggle" id="simToggle" onclick="toggleSim()">SIM Controls</button>
+<div class="sim-panel" id="simPanel">
+  <button class="sim-close" onclick="toggleSim()">&times;</button>
+  <h4>Process Value Simulator</h4>
+  <label>Sweep all gauges (% of range)</label>
+  <input type="range" id="simSlider" min="0" max="100" step="0.5" value="50" oninput="simSweep()">
+  <div class="sv" id="simPct">50%</div>
+  <div class="btns">
+    <button onclick="simMode('sine')">Sine Wave</button>
+    <button onclick="simMode('ramp')">Ramp Up</button>
+    <button onclick="simMode('trip')">Trip</button>
+    <button onclick="simMode('normal')">Normal Ops</button>
+    <button onclick="simMode('stop')" id="simStopBtn" style="display:none">Stop</button>
+  </div>
+</div>
+
+<!-- Editor overlay -->
+<div class="overlay" id="editorOverlay">
+  <div class="overlay-bar">
+    <h2>murphy-gauge.svg — Source Code</h2>
+    <button class="green" onclick="applyCode()">Apply to All Gauges</button>
+    <button class="orange" onclick="exportFromEditor()">Export .SVG</button>
+    <button onclick="closeEditor()">Close</button>
+  </div>
+  <div class="code-area"><textarea id="codeEditor" spellcheck="false"></textarea></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  Page configurations — matching Murphy screenshots
+// ============================================================
+var PAGES = [
+  { // Page 1 — Stage Pressures
+    title: 'Process Overview #1 of 4', type: 'gauges',
+    gauges: [
+      {label:'Stage 1 Suction Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:295,ls:0,la:59,ha:236,hs:295,auto:false,mMin:0,mMax:295,val:36.6},
+      {label:'Stage 2 Suction Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:600,ls:252,la:136,ha:368,hs:484,auto:false,mMin:0,mMax:600,val:307.5},
+      {label:'Stage 3 Suction Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:915,ls:263,la:426,ha:589,hs:752,auto:false,mMin:0,mMax:915,val:577.1},
+      {label:'Compressor Oil Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:1500,ls:576,la:268,ha:884,hs:1192,auto:false,mMin:0,mMax:1500,val:58.8},
+      {label:'Stage 1 Discharge Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:484,ls:252,la:252,ha:368,hs:484,auto:false,mMin:0,mMax:484,val:186.2},
+      {label:'Stage 2 Discharge Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:742,ls:396,la:223,ha:569,hs:742,auto:false,mMin:0,mMax:742,val:434.3},
+      {label:'Stage 3 Discharge Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:1300,ls:640,la:420,ha:860,hs:1080,auto:false,mMin:0,mMax:1300,val:872.3},
+      {label:'Flow Rate',unit:'MMSCFD',prec:2,fMin:0,fMax:10,ls:0,la:0,ha:10,hs:10,auto:false,mMin:0,mMax:10,val:0.00}
+    ]
+  },
+  { // Page 2 — Stage Temperatures
+    title: 'Process Overview #2 of 4', type: 'gauges',
+    gauges: [
+      {label:'1st Stage Suction Temperature',unit:'Deg F',prec:1,fMin:-40,fMax:395,ls:-40,la:47,ha:134,hs:221,auto:false,mMin:-40,mMax:395,val:93.9},
+      {label:'2nd Stage Suction Temperature',unit:'Deg F',prec:1,fMin:-40,fMax:295,ls:-40,la:27,ha:94,hs:161,auto:false,mMin:-40,mMax:295,val:138.4},
+      {label:'3rd Stage Suction Temperature',unit:'Deg F',prec:1,fMin:-40,fMax:295,ls:-40,la:27,ha:94,hs:161,auto:false,mMin:-40,mMax:295,val:132.2},
+      {label:'Compressor Oil Temperature',unit:'Deg F',prec:1,fMin:0,fMax:1500,ls:576,la:268,ha:884,hs:1192,auto:false,mMin:0,mMax:1500,val:69.1},
+      {label:'1st Stage Discharge Temperature',unit:'Deg F',prec:1,fMin:-40,fMax:415,ls:-40,la:51,ha:142,hs:233,auto:false,mMin:-40,mMax:415,val:201.9},
+      {label:'2nd Stage Discharge Temperature',unit:'Deg F',prec:1,fMin:-40,fMax:324,ls:-40,la:51,ha:142,hs:233,auto:false,mMin:-40,mMax:324,val:148.9},
+      {label:'3rd Stage Discharge Temperature',unit:'Deg F',prec:1,fMin:-40,fMax:415,ls:-40,la:142,ha:142,hs:233,auto:false,mMin:-40,mMax:415,val:200.1},
+      {label:'Cooler Outlet Temperature',unit:'Deg F',prec:1,fMin:-40,fMax:325,ls:-40,la:40,ha:106,hs:179,auto:false,mMin:-40,mMax:325,val:35.9}
+    ]
+  },
+  { // Page 3 — Data Table
+    title: 'Process Overview #3 of 4', type: 'table'
+  },
+  { // Page 4 — Throw Pressures
+    title: 'Process Overview #4 of 4', type: 'gauges',
+    gauges: [
+      {label:'Throw 1 Suction Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:2000,ls:0,la:0,ha:2000,hs:2000,auto:false,mMin:0,mMax:2000,val:30.6,noZones:true},
+      {label:'Throw 2 Suction Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:2000,ls:0,la:0,ha:2000,hs:2000,auto:false,mMin:0,mMax:2000,val:577.2,noZones:true},
+      {label:'Throw 3 Suction Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:2000,ls:0,la:0,ha:2000,hs:2000,auto:false,mMin:0,mMax:2000,val:42.7,noZones:true},
+      {label:'Throw 4 Suction Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:2000,ls:0,la:0,ha:2000,hs:2000,auto:false,mMin:0,mMax:2000,val:307.5,noZones:true},
+      {label:'Throw 1 Discharge Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:2000,ls:0,la:0,ha:2000,hs:2000,auto:false,mMin:0,mMax:2000,val:168.0,noZones:true},
+      {label:'Throw 2 Discharge Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:2000,ls:0,la:0,ha:2000,hs:2000,auto:false,mMin:0,mMax:2000,val:872.5,noZones:true},
+      {label:'Throw 3 Discharge Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:2000,ls:0,la:0,ha:2000,hs:2000,auto:false,mMin:0,mMax:2000,val:204.4,noZones:true},
+      {label:'Throw 4 Discharge Pressure',unit:'psi(g)',prec:1,fMin:0,fMax:2000,ls:0,la:0,ha:2000,hs:2000,auto:false,mMin:0,mMax:2000,val:434.3,noZones:true}
+    ]
+  }
+];
+
+// ============================================================
+//  State
+// ============================================================
+var currentPage = 0;
+var gaugePVs = []; // putValue functions for each gauge object
+var gaugeVals = []; // current simulated values per gauge
+var loadedCount = 0;
+var simTimer = null;
+var svgSource = '';
+
+// ============================================================
+//  Clock
+// ============================================================
+function updateClock(){
+  var d=new Date();
+  var mo=('0'+(d.getMonth()+1)).slice(-2), dy=('0'+d.getDate()).slice(-2), yr=d.getFullYear();
+  var h=('0'+d.getHours()).slice(-2), m=('0'+d.getMinutes()).slice(-2), s=('0'+d.getSeconds()).slice(-2);
+  document.getElementById('hdrTime').textContent=mo+'/'+dy+'/'+yr+' - '+h+':'+m+':'+s;
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// ============================================================
+//  Gauge loading
+// ============================================================
+for(var i=0;i<8;i++){
+  (function(idx){
+    var obj=document.getElementById('g'+idx);
+    obj.addEventListener('load',function(){
+      var doc=obj.contentDocument;
+      gaugePVs[idx]=doc.defaultView.putValue;
+      if(!svgSource) svgSource=new XMLSerializer().serializeToString(doc.documentElement);
+      loadedCount++;
+      if(loadedCount===8) showPage(0);
+    });
+  })(i);
+}
+
+// ============================================================
+//  Page rendering
+// ============================================================
+function showPage(idx){
+  currentPage=idx;
+  var page=PAGES[idx];
+  document.getElementById('hdrTitle').textContent=page.title;
+
+  if(page.type==='table'){
+    document.getElementById('gaugeArea').style.display='none';
+    document.getElementById('dataTable').style.display='block';
+  } else {
+    document.getElementById('gaugeArea').style.display='flex';
+    document.getElementById('dataTable').style.display='none';
+    configureGauges(page.gauges);
+  }
+}
+
+function configureGauges(gauges){
+  gaugeVals=[];
+  for(var i=0;i<8;i++){
+    var g=gauges[i];
+    if(!g||!gaugePVs[i]) continue;
+    var pv=gaugePVs[i];
+    pv('_ps_label',g.label);
+    pv('_ps_unit',g.unit);
+    pv('_pn_precision',g.prec);
+    pv('_pn_fullMin',g.fMin);
+    pv('_pn_fullMax',g.fMax);
+    pv('_pn_lowShutdown',g.ls);
+    pv('_pn_lowAlarm',g.la);
+    pv('_pn_highAlarm',g.ha);
+    pv('_pn_highShutdown',g.hs);
+    pv('_pb_autoScale',g.auto);
+    pv('_pn_manualDisplayMin',g.mMin);
+    pv('_pn_manualDisplayMax',g.mMax);
+    pv('_pn_scalePaddingPercent',0);
+    // For throw gauges (no zones) — set normal color for the full arc
+    if(g.noZones){
+      pv('_pc_normalColor','#00aa00');
+      pv('_pc_alarmColor','#00aa00');
+      pv('_pc_shutdownColor','#00aa00');
+    } else {
+      pv('_pc_normalColor','#00aa00');
+      pv('_pc_alarmColor','#cccc00');
+      pv('_pc_shutdownColor','#cc0000');
+    }
+    pv('_pn_value',g.val);
+    gaugeVals[i]={val:g.val,min:g.fMin,max:g.fMax};
+  }
+}
+
+function navPage(dir){
+  var next=currentPage+dir;
+  if(next<0)next=PAGES.length-1;
+  if(next>=PAGES.length)next=0;
+  if(simTimer){simMode('stop');}
+  showPage(next);
+}
+
+// ============================================================
+//  Simulator
+// ============================================================
+function toggleSim(){
+  var p=document.getElementById('simPanel');
+  p.classList.toggle('show');
+}
+
+function simSweep(){
+  var pct=parseFloat(document.getElementById('simSlider').value)/100;
+  document.getElementById('simPct').textContent=Math.round(pct*100)+'%';
+  var page=PAGES[currentPage];
+  if(page.type==='table')return;
+  for(var i=0;i<8;i++){
+    if(!gaugePVs[i]||!page.gauges[i])continue;
+    var g=page.gauges[i];
+    var v=g.fMin+pct*(g.fMax-g.fMin);
+    gaugePVs[i]('_pn_value',v);
+    gaugeVals[i].val=v;
+  }
+}
+
+function simMode(mode){
+  if(simTimer){clearInterval(simTimer);simTimer=null;}
+  document.getElementById('simStopBtn').style.display=(mode==='stop')?'none':'inline-block';
+  if(mode==='stop')return;
+
+  var page=PAGES[currentPage];
+  if(page.type==='table')return;
+
+  if(mode==='sine'){
+    var t=0;
+    simTimer=setInterval(function(){
+      t+=0.02;
+      for(var i=0;i<8;i++){
+        if(!gaugePVs[i]||!page.gauges[i])continue;
+        var g=page.gauges[i];
+        var mid=(g.fMin+g.fMax)/2, amp=(g.fMax-g.fMin)/2*0.85;
+        var phase=i*0.4; // offset each gauge
+        var v=mid+amp*Math.sin(t+phase);
+        gaugePVs[i]('_pn_value',v);
+      }
+      var pct=50+42.5*Math.sin(t);
+      document.getElementById('simSlider').value=pct;
+      document.getElementById('simPct').textContent=Math.round(pct)+'%';
+    },30);
+  }
+
+  if(mode==='ramp'){
+    var t=0;
+    simTimer=setInterval(function(){
+      t+=0.002;
+      if(t>1.1)t=0;
+      for(var i=0;i<8;i++){
+        if(!gaugePVs[i]||!page.gauges[i])continue;
+        var g=page.gauges[i];
+        var v=g.fMin+Math.min(t,1)*(g.fMax-g.fMin);
+        gaugePVs[i]('_pn_value',v);
+      }
+      document.getElementById('simSlider').value=Math.min(t*100,100);
+      document.getElementById('simPct').textContent=Math.round(Math.min(t,1)*100)+'%';
+    },30);
+  }
+
+  if(mode==='trip'){
+    var ph=0,tt=0;
+    simTimer=setInterval(function(){
+      tt++;
+      for(var i=0;i<8;i++){
+        if(!gaugePVs[i]||!page.gauges[i])continue;
+        var g=page.gauges[i];
+        var mid=(g.la+g.ha)/2||((g.fMin+g.fMax)/2);
+        var rng=g.fMax-g.fMin;
+        var v;
+        if(ph===0){
+          v=mid+rng*0.08*Math.sin(tt*0.03+i*0.3)+(Math.random()-0.5)*rng*0.01;
+          if(tt>150){ph=1;tt=0;}
+        }else if(ph===1){
+          v=mid+rng*(tt/120)*0.55;
+          if(tt>120){ph=2;tt=0;}
+        }else{
+          v=g.fMax*0.95;
+          if(tt>60){ph=0;tt=0;}
+        }
+        gaugePVs[i]('_pn_value',v);
+      }
+    },30);
+  }
+
+  if(mode==='normal'){
+    simTimer=setInterval(function(){
+      for(var i=0;i<8;i++){
+        if(!gaugePVs[i]||!page.gauges[i])continue;
+        var g=page.gauges[i];
+        var mid=(g.la+g.ha)/2||g.val;
+        var rng=(g.ha-g.la)||((g.fMax-g.fMin)*0.3);
+        var v=mid+rng*0.25*Math.sin(Date.now()*0.0005+i*1.2)+(Math.random()-0.5)*rng*0.05;
+        gaugePVs[i]('_pn_value',v);
+      }
+    },50);
+  }
+}
+
+// ============================================================
+//  Code editor
+// ============================================================
+function openEditor(){
+  document.getElementById('codeEditor').value=svgSource;
+  document.getElementById('editorOverlay').classList.add('show');
+}
+function closeEditor(){document.getElementById('editorOverlay').classList.remove('show');}
+
+function applyCode(){
+  var src=document.getElementById('codeEditor').value;
+  var blob=new Blob([src],{type:'image/svg+xml'});
+  var url=URL.createObjectURL(blob);
+  loadedCount=0; gaugePVs=[];
+  for(var i=0;i<8;i++){
+    (function(idx){
+      var obj=document.getElementById('g'+idx);
+      obj.data=url;
+      obj.addEventListener('load',function handler(){
+        obj.removeEventListener('load',handler);
+        gaugePVs[idx]=obj.contentDocument.defaultView.putValue;
+        loadedCount++;
+        if(loadedCount===8){svgSource=src;showPage(currentPage);toast('Applied to all gauges');}
+      });
+    })(i);
+  }
+}
+
+function exportFromEditor(){downloadSVG(document.getElementById('codeEditor').value);}
+function exportSVG(){downloadSVG(svgSource);}
+function downloadSVG(src){
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([src],{type:'image/svg+xml'}));
+  a.download='murphy-gauge.svg';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  toast('SVG exported');
+}
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(function(){t.className='toast';},2500);}
+</script>
+</body>
+</html>
