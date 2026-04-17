@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Placeholder SC red geometric overlay.
+  Approximates the hex/bolt pattern seen on the SC footer ribbon and walkway
+  photography. Replace with the authoritative sc-pattern-red.svg from Slant
+  when available — no code change needed.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <defs>
+    <pattern id="hex" x="0" y="0" width="24" height="28" patternUnits="userSpaceOnUse">
+      <polygon points="12,2 22,8 22,20 12,26 2,20 2,8"
+               fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="1"/>
+    </pattern>
+    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#D32028"/>
+      <stop offset="50%"  stop-color="#B01A20"/>
+      <stop offset="100%" stop-color="#8A1519"/>
+    </linearGradient>
+  </defs>
+  <rect width="240" height="240" fill="url(#red)"/>
+  <rect width="240" height="240" fill="url(#hex)"/>
+</svg>

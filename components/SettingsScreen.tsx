@@ -4,11 +4,46 @@ import { SystemState, fmt } from "@/lib/simulator";
 export default function SettingsScreen({ state, onNav }: { state: SystemState; onNav: (s: string) => void }) {
   return (
     <div style={{ background: "#2b2b2b", width: 1024, height: 700, fontFamily: "Roboto, sans-serif", overflow: "hidden" }}>
-      {/* Header */}
-      <div style={{ background: "#333", borderBottom: "3px solid #595959", padding: "6px 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ fontSize: 22, fontWeight: 700, color: "#fff" }}>Settings</span>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => onNav("overview")} style={{ background: "#05285B", border: "1px solid #5A9CFE", color: "#fff", padding: "6px 18px", borderRadius: 6, cursor: "pointer", fontWeight: 700, fontSize: 16 }}>Home</button>
+      {/* SC-branded header strip */}
+      <div style={{
+        background: "linear-gradient(180deg, #05233E 0%, #0F3C64 100%)",
+        borderBottom: "2px solid #D32028",
+        padding: "10px 16px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
+        <div>
+          <div style={{
+            fontFamily: "Montserrat, sans-serif",
+            fontSize: 10,
+            letterSpacing: 2,
+            textTransform: "uppercase",
+            color: "#49D0E2",
+            fontWeight: 600,
+          }}>Operator · Configuration</div>
+          <span style={{
+            fontFamily: "Montserrat, sans-serif",
+            fontSize: 20, fontWeight: 800, letterSpacing: -0.3, color: "#fff",
+          }}>Settings</span>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={() => onNav("overview")}
+            style={{
+              background: "#D32028",
+              border: 0,
+              color: "#fff",
+              padding: "6px 14px",
+              fontFamily: "Montserrat, sans-serif",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              cursor: "pointer",
+              borderRadius: 2,
+            }}
+          >← Home</button>
         </div>
       </div>
 

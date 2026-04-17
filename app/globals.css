@@ -1,21 +1,254 @@
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+/* ─────────────────────────────────────────────────────────────────────
+   Service Compression brand layer
+   - Montserrat via Google Fonts (SC primary)
+   - Roboto retained for legacy simulator SVG <text> rendering only
+   - SC design tokens exposed as CSS variables for use outside Tailwind
+   ───────────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  /* ── SC primary ── */
+  --sc-navy: #05233E;
+  --sc-navy-light: #0F3C64;
+  --sc-navy-muted: #293C5B;
+  --sc-red: #D32028;
+  --sc-cyan: #49D0E2;
+
+  /* ── SC neutrals ── */
+  --sc-white: #FFFFFF;
+  --sc-offwhite: #EDEDED;
+  --sc-light: #F2F2F2;
+  --sc-gray-100: #D0D0D0;
+  --sc-gray-200: #C1C1C1;
+  --sc-gray-500: #474444;
+  --sc-ink: #212121;
+
+  /* ── SC functional ── */
+  --sc-link: #1863DC;
+  --sc-success: #008000;
+
+  /* ── Type ── */
+  --sc-font: "Montserrat", system-ui, sans-serif;
+  --sc-line: 1.25;
+
+  /* ── Legacy simulator tokens (do not remove — referenced by HMI SVGs) ── */
   --fuxa-bg: #2b2b2b;
   --fuxa-panel: #4D4D4D;
   --fuxa-green: #00b050;
   --fuxa-red: #c00000;
 }
 
-body {
-  background: #1a1a1a;
-  color: #fff;
-  font-family: 'Roboto', sans-serif;
+html, body {
+  background: var(--sc-navy);
+  color: var(--sc-white);
+  font-family: var(--sc-font);
+  font-size: 16px;
+  line-height: var(--sc-line);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* ─── SC utility primitives ─────────────────────────────────────────── */
+
+/* Eyebrow/kicker — cyan uppercase label seen above section headlines */
+.sc-eyebrow {
+  font-family: var(--sc-font);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.25;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--sc-cyan);
+}
+
+/* Section headline — white, extrabold, tight tracking */
+.sc-headline {
+  font-family: var(--sc-font);
+  font-weight: 800;
+  font-size: clamp(28px, 4vw, 41.718px);
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+  color: var(--sc-white);
+}
+
+.sc-subhead {
+  font-family: var(--sc-font);
+  font-weight: 600;
+  font-size: 19.632px;
+  line-height: 1.25;
+  letter-spacing: 0.6px;
+  color: var(--sc-white);
+}
+
+/* Nav link — uppercase, 2px track, Montserrat 600 */
+.sc-nav-link {
+  font-family: var(--sc-font);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--sc-white);
+  text-decoration: none;
+  padding: 8px 0;
+  position: relative;
+  transition: color 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sc-nav-link:hover { color: var(--sc-cyan); }
+.sc-nav-link[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--sc-red);
+}
+
+/* Primary CTA — SC red, squared corners, aggressive weight */
+.sc-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--sc-font);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--sc-white);
+  background: var(--sc-red);
+  padding: 14px 28px;
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 180ms cubic-bezier(0.2, 0.8, 0.2, 1), transform 180ms;
+  text-decoration: none;
+}
+.sc-btn-primary:hover {
+  background: #B01A20;
+  transform: translateY(-1px);
+}
+.sc-btn-primary:active { transform: translateY(0); }
+
+.sc-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--sc-font);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--sc-white);
+  background: transparent;
+  padding: 13px 27px;
+  border: 1px solid var(--sc-white);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  text-decoration: none;
+}
+.sc-btn-ghost:hover {
+  background: var(--sc-white);
+  color: var(--sc-navy);
+}
+
+/* Link — SC functional blue */
+a.sc-link, .sc-link {
+  color: var(--sc-link);
+  text-decoration: none;
+}
+a.sc-link:hover, .sc-link:hover { text-decoration: underline; }
+
+/* Card — sharp rectangular panel, SC look */
+.sc-card {
+  background: var(--sc-navy-light);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 30px;
+  transition: border-color 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sc-card:hover {
+  border-color: var(--sc-red);
+  transform: translateY(-2px);
+}
+.sc-card--light {
+  background: var(--sc-offwhite);
+  color: var(--sc-ink);
+  border-color: var(--sc-gray-100);
+}
+
+/* Horizontal rule accent — thin red hairline seen in SC sections */
+.sc-rule {
+  display: inline-block;
+  width: 48px;
+  height: 3px;
+  background: var(--sc-red);
+  margin: 12px 0 20px;
+}
+
+/* Status pill */
+.sc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sc-font);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.sc-pill--running  { background: rgba(0, 128, 0, 0.18);     color: #4ade80; border: 1px solid rgba(0,128,0,0.4); }
+.sc-pill--alarm    { background: rgba(211, 32, 40, 0.2);    color: #FF5A62; border: 1px solid rgba(211,32,40,0.5); }
+.sc-pill--idle     { background: rgba(255, 255, 255, 0.08); color: #C1C1C1; border: 1px solid rgba(255,255,255,0.15); }
+.sc-pill--fault    { background: rgba(255, 140, 0, 0.2);    color: #FFB366; border: 1px solid rgba(255,140,0,0.5); }
+.sc-pill--comm     { background: rgba(73, 208, 226, 0.15);  color: var(--sc-cyan); border: 1px solid rgba(73,208,226,0.4); }
+
+/* Pulse dot used in the live data indicator */
+.sc-pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--sc-cyan);
+  box-shadow: 0 0 0 0 rgba(73, 208, 226, 0.7);
+  animation: sc-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes sc-pulse {
+  0%, 100% { opacity: 1;   box-shadow: 0 0 0 0 rgba(73, 208, 226, 0.7); }
+  50%      { opacity: 0.6; box-shadow: 0 0 0 6px rgba(73, 208, 226, 0); }
+}
+
+/* Red geometric overlay hook — applied via ::before so the layer is
+   decorative and non-interactive */
+.sc-pattern-red::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0),
+    linear-gradient(135deg, rgba(211,32,40,0.15) 0%, rgba(211,32,40,0) 60%);
+  background-size: 16px 16px, 100% 100%;
+  mix-blend-mode: screen;
+}
+
+/* ─── Layout utilities ──────────────────────────────────────────────── */
+.sc-container {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+@media (min-width: 768px)  { .sc-container { padding: 0 40px; } }
+@media (min-width: 1200px) { .sc-container { padding: 0 60px; } }
+
+.sc-section      { padding-block: 60px; }
+@media (min-width: 768px)  { .sc-section { padding-block: 100px; } }
+@media (min-width: 1200px) { .sc-section { padding-block: 120px; } }
+
+/* ─── Legacy simulator-native styles (preserve — do not retheme) ────── */
 .fuxa-screen {
   background: #2b2b2b;
   width: 1024px;
@@ -23,20 +256,30 @@ body {
   position: relative;
   overflow: hidden;
 }
-
-.gauge-bar {
-  transition: height 1s ease, y 1s ease;
-}
+.gauge-bar { transition: height 1s ease, y 1s ease; }
 
 @keyframes blink {
-  0%, 49% { opacity: 1; }
+  0%, 49%   { opacity: 1; }
   50%, 100% { opacity: 0.3; }
 }
+.blink       { animation: blink 0.5s infinite; }
+.alarm-blink { animation: blink 1s infinite; }
 
-.blink {
-  animation: blink 0.5s infinite;
+/* Reduced motion respect — turn off every pulsing / blinking animation
+   the SC brand uses for operators who have vestibular sensitivity. */
+@media (prefers-reduced-motion: reduce) {
+  .sc-pulse, .blink, .alarm-blink { animation: none; }
+  * { scroll-behavior: auto !important; }
 }
 
-.alarm-blink {
-  animation: blink 1s infinite;
+/* Scrollbar (WebKit) — subtle, not distracting */
+::-webkit-scrollbar         { width: 8px; height: 8px; }
+::-webkit-scrollbar-track   { background: var(--sc-navy); }
+::-webkit-scrollbar-thumb   { background: var(--sc-navy-light); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--sc-cyan); }
+
+/* Focus ring — accessible + on-brand */
+:focus-visible {
+  outline: 2px solid var(--sc-cyan);
+  outline-offset: 2px;
 }
